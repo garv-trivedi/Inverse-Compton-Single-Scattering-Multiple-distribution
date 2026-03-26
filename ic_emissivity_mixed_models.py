@@ -255,7 +255,7 @@ seed_V = seed_df["V_Epsilon"].to_numpy(dtype=float)
 st.sidebar.header("Output grid")
 lower_E = st.sidebar.number_input("Lower limit of epsilon", value=1e-2, min_value=1e-12, format="%.2e")
 upper_E = st.sidebar.number_input("Upper limit of epsilon", value=1e3, min_value=1e-12, format="%.2e")
-n_out = st.sidebar.number_input("Number of output points", value=200, min_value=3, max_value=2000)
+n_out = st.sidebar.number_input("Number of output points", value=378, min_value=3, max_value=2000)
 
 eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
 
