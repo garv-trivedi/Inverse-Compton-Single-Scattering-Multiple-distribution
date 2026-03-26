@@ -237,6 +237,7 @@ st.title("Inverse Compton Spectra for Single Scattering")
 # Sidebar inputs
 # -----------------------------
 st.sidebar.header("Seed photon spectrum")
+
 uploaded_file = st.sidebar.file_uploader(
     "Upload a whitespace/comma separated txt file",
     type=["txt", "csv"]
@@ -244,6 +245,9 @@ uploaded_file = st.sidebar.file_uploader(
 
 st.sidebar.write("File must contain columns named `Epsilon` and `V_Epsilon`.")
 
+# -----------------------------
+# Data source selection
+# -----------------------------
 use_sample = st.sidebar.checkbox("Use Sample.txt (default)", value=True)
 
 if use_sample:
@@ -261,7 +265,6 @@ else:
     
     seed_df = load_seed_spectrum(uploaded_file)
     st.success(f"Using uploaded file: {uploaded_file.name}")
-
 seed_df = load_seed_spectrum(uploaded_file)
 seed_E = seed_df["Epsilon"].to_numpy(dtype=float)
 seed_V = seed_df["V_Epsilon"].to_numpy(dtype=float)
