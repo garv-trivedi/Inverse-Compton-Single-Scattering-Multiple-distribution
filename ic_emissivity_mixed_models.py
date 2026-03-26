@@ -147,16 +147,15 @@ def maxwell_juttner_ne_gamma(gamma, nth, T):
     return norm * gamma**2 * beta * np.exp(-gamma / theta)
 
 def maxwell_boltzmann_ne_gamma(gamma, nth, T):
-    """
-    N_MB(E) = nth * 2/sqrt(pi) * 1/(kT)^(3/2) * sqrt(E) * exp(-E/kT)
-    with E = (gamma - 1) m_e c^2, and N(gamma) dgamma = N(E) dE
-    """
     gamma = np.asarray(gamma, dtype=float)
     kT_keV = KB_KEV_PER_K * T
     if kT_keV <= 0:
         raise ValueError("Temperature must be positive.")
+    # E = (gamma - 1) * m_e * c^2 [cite: 3, 21]
     E_keV = np.maximum((gamma - 1.0) * ME_C2_KEV, 0.0)
-    n_E = nth * (2.0 / np.sqrt(np.pi)) * np.sqrt(E_keV) * np.exp(-E_keV / kT_keV) / (kT_keV**1.5)
+    # N_MB(E) distribution [cite: 3, 19]
+    n_E = nth * (2.0 / (np.sqrt(np.pi) * (kT_keV**1.5))) * np.sqrt(E_keV) * np.exp(-E_keV / kT_keV)
+    # Return N(gamma) = N(E) * (dE/dgamma)
     return n_E * ME_C2_KEV
 
 def kn_dsigma_d_es(eps_s, seed_eps, gamma_grid):
@@ -350,7 +349,10 @@ with tab_mj:
 # prevent too small range
         gamma_max_eff = max(gamma_max_eff, 5)
 
-        gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
+        g_min_m1 = 1e-6 
+        g_max_m1 = gamma_max - 1.0
+        gamma_grid = np.logspace(np.log10(g_min_m1), np.log10(g_max_m1), int(n_gamma)) + 1.0
+
         ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
         emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
@@ -376,7 +378,10 @@ with tab_mb:
 # prevent too small range
     gamma_max_eff = max(gamma_max_eff, 5)
 
-    gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
+    g_min_m1 = 1e-6 
+    g_max_m1 = gamma_max - 1.0
+    gamma_grid = np.logspace(np.log10(g_min_m1), np.log10(g_max_m1), int(n_gamma)) + 1.0
+
     ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
     emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
