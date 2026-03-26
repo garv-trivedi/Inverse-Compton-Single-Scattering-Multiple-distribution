@@ -336,56 +336,43 @@ with tab_powerlaw:
 # =============================================================================
 # Maxwell-Jüttner tab
 # =============================================================================
-with tab_mj:
-    st.header("Maxwell-Jüttner Distribution")
+# Define temperature parameter
+theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
 
-    if besselk is None:
-        st.error("SciPy is required for the Maxwell-Jüttner branch because it uses the modified Bessel function K₂.")
-    else:
-        theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+# Adaptive gamma range
+gamma_peak = 1 + theta
+gamma_max_eff = 1 + 10 * theta
+gamma_max_eff = max(gamma_max_eff, 5)
 
-        gamma_peak = 1 + theta
-        gamma_max_eff = 1 + 10 * theta
+# ✅ DEFINE gamma_grid HERE
+gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
 
-# prevent too small range
-        gamma_max_eff = max(gamma_max_eff, 5)
+# Epsilon grid
+eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), int(n_out))
 
-        eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
-        ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
-        emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
+# Electron distribution
+ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
 
-        data_mj = make_display_df(eps_grid, emissivity)
-        st.dataframe(data_mj, use_container_width=True)
-        plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Jüttner)")
+# (optional normalization)
+ne_gamma = ne_gamma / np.trapz(ne_gamma, gamma_grid) * nth
 
-        theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
-        st.latex(r"N_{MJ}(\gamma)=\frac{n_{th}\gamma^2\beta}{\Theta K_2(1/\Theta)}e^{-\gamma/\Theta}")
-        st.write(f"Theta = {theta:.4e}")
+# Emissivity
+emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
 # =============================================================================
 # Maxwell-Boltzmann tab
 # =============================================================================
-with tab_mb:
-    st.header("Maxwell-Boltzmann Distribution")
+theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+gamma_max_eff = max(1 + 10 * theta, 5)
 
-    theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
 
-    gamma_peak = 1 + theta
-    gamma_max_eff = 1 + 10 * theta
+eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), int(n_out))
 
-# prevent too small range
-    gamma_max_eff = max(gamma_max_eff, 5)
+ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
+ne_gamma = ne_gamma / np.trapz(ne_gamma, gamma_grid) * nth
 
-    eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
-    ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
-    emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
-
-    data_mb = make_display_df(eps_grid, emissivity)
-    st.dataframe(data_mb, use_container_width=True)
-    plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Boltzmann)")
-
-    st.latex(r"N_{MB}(E)=n_{th}\frac{2}{\sqrt{\pi}(kT)^{3/2}}\sqrt{E}e^{-E/kT}")
-    st.write(f"kT = {KB_KEV_PER_K * T_thermal:.4e} keV")
+emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
 # -----------------------------------------------------------------------------
 # Footer
