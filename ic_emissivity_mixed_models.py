@@ -342,7 +342,15 @@ with tab_mj:
     if besselk is None:
         st.error("SciPy is required for the Maxwell-Jüttner branch because it uses the modified Bessel function K₂.")
     else:
-        gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
+        theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+
+        gamma_peak = 1 + theta
+        gamma_max_eff = 1 + 10 * theta
+
+# prevent too small range
+        gamma_max_eff = max(gamma_max_eff, 5)
+
+        gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
         ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
         emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
@@ -360,7 +368,15 @@ with tab_mj:
 with tab_mb:
     st.header("Maxwell-Boltzmann Distribution")
 
-    gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
+    theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+
+    gamma_peak = 1 + theta
+    gamma_max_eff = 1 + 10 * theta
+
+# prevent too small range
+    gamma_max_eff = max(gamma_max_eff, 5)
+
+    gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
     ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
     emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
