@@ -228,16 +228,17 @@ def plot_spectrum(x, y, title, x_label="Epsilon", y_label="Volume Emissivity"):
 # -----------------------------------------------------------------------------
 st.title("Inverse Compton Spectra for Single Scattering")
 
-st.sidebar.header("Model")
-distribution = st.sidebar.selectbox(
-    "Electron distribution",
-    ["Power law", "Maxwell-Jüttner", "Maxwell-Boltzmann"]
+# -----------------------------
+# Sidebar inputs
+# -----------------------------
+st.sidebar.header("Seed photon spectrum")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload a whitespace/comma separated txt file",
+    type=["txt", "csv"]
 )
 
-st.sidebar.header("Seed photon spectrum")
-uploaded_file = st.sidebar.file_uploader("Upload a whitespace/comma separated txt file", type=["txt", "csv"])
-
 st.sidebar.write("File must contain columns named `Epsilon` and `V_Epsilon`.")
+
 if uploaded_file is None:
     st.info("Upload a seed-photon file with columns `Epsilon` and `V_Epsilon` to run the model.")
     st.stop()
@@ -253,92 +254,126 @@ n_out = st.sidebar.number_input("Number of output points", value=100, min_value=
 
 eps_grid = log_or_linear_grid(lower_E, upper_E, n_out)
 
-# Common thermal inputs
+st.sidebar.header("General thermal-grid settings")
 gamma_min = st.sidebar.number_input("Gamma min", value=1.0, min_value=1.0)
 gamma_max = st.sidebar.number_input("Gamma max", value=1e5, min_value=1.0)
 n_gamma = st.sidebar.number_input("Gamma grid points", value=250, min_value=20, max_value=5000)
 
-if distribution == "Power law":
-    st.sidebar.header("Power-law inputs")
-    p = st.sidebar.number_input("Electron index p", value=2.5)
-    q_pl = st.sidebar.number_input("Normalization parameter q", value=2.72)
-    B = st.sidebar.number_input("Magnetic field B", value=2.72)
-    alpha = st.sidebar.number_input("Seed photon index alpha", value=2.72)
-    F = st.sidebar.number_input("Flux density F", value=2.72)
-    vref = st.sidebar.number_input("Reference frequency v", value=2.72)
-    theta_len = st.sidebar.number_input("Theta length (arcsec)", value=1.0)
-    theta_brd = st.sidebar.number_input("Theta breadth (arcsec)", value=1.0)
-    T = st.sidebar.number_input("Temperature T (leave 0 to ignore blackbody branch)", value=0.0, min_value=0.0)
+# -----------------------------
+# Power-law parameters
+# -----------------------------
+st.sidebar.header("Power-law inputs")
+p = st.sidebar.number_input("Electron index p", value=2.5)
+q_pl = st.sidebar.number_input("Normalization parameter q", value=2.72)
+B = st.sidebar.number_input("Magnetic field B", value=2.72)
+alpha = st.sidebar.number_input("Seed photon index alpha", value=2.72)
+F = st.sidebar.number_input("Flux density F", value=2.72)
+vref = st.sidebar.number_input("Reference frequency v", value=2.72)
+theta_len = st.sidebar.number_input("Theta length (arcsec)", value=1.0)
+theta_brd = st.sidebar.number_input("Theta breadth (arcsec)", value=1.0)
+T_blackbody = st.sidebar.number_input(
+    "Temperature T for blackbody shortcut (set 0 to ignore)",
+    value=0.0,
+    min_value=0.0
+)
 
-    if T and T > 0:
-        final, _ = powerlaw_emissivity(eps_grid, p, seed_E, seed_V, q_pl, B, alpha, F, vref, theta_len, theta_brd, T=T)
-        st.header("Black Body Condition")
-    else:
-        final, final2 = powerlaw_emissivity(eps_grid, p, seed_E, seed_V, q_pl, B, alpha, F, vref, theta_len, theta_brd, T=None)
-        st.header("Power Law Distribution")
+# -----------------------------
+# Thermal parameters
+# -----------------------------
+st.sidebar.header("Thermal electron inputs")
+nth = st.sidebar.number_input("Thermal electron density n_th", value=1.0e6, min_value=0.0)
+T_thermal = st.sidebar.number_input("Thermal temperature T (K)", value=1.0e8, min_value=0.0)
 
-        data2 = pd.DataFrame({
-            "Epsilon": [f"{x:.6e}" for x in eps_grid],
-            "Volume Emissivity": [f"{x:.6e}" for x in final2],
-        })
+# Helper for display tables
+def make_display_df(x, y):
+    return pd.DataFrame({
+        "Epsilon": [f"{val:.6e}" for val in np.asarray(x)],
+        "Volume Emissivity": [f"{val:.6e}" for val in np.asarray(y)],
+    })
+
+# -----------------------------
+# Tabs: show all three models
+# -----------------------------
+tab_powerlaw, tab_mj, tab_mb = st.tabs(
+    ["Power law", "Maxwell-Jüttner", "Maxwell-Boltzmann"]
+)
+
+# =============================================================================
+# Power-law tab
+# =============================================================================
+with tab_powerlaw:
+    st.header("Power Law Distribution")
+
+    final, final2 = powerlaw_emissivity(
+        eps_grid, p, seed_E, seed_V,
+        q_pl, B, alpha, F, vref,
+        theta_len, theta_brd,
+        T=T_blackbody if T_blackbody > 0 else None
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Power-law seed integral")
+        data2 = make_display_df(eps_grid, final2)
         st.dataframe(data2, use_container_width=True)
         plot_spectrum(eps_grid, final2, "Inverse Compton Result (Power Law)")
 
-        st.latex(r"\frac{dE}{dVdt d\epsilon_1} = \pi c r_0^2 C A(p)\epsilon_1^{-(p-1)/2}\int d\epsilon\, \epsilon^{(p-1)/2} v(\epsilon)")
-        st.latex(r"A(p) = 2^{p+3}\frac{p^2+4p+11}{(p+3)^2(p+5)(p+1)}")
-        st.latex(r"C = N_0 (m_e c^2)^{-p}")
+    with col2:
+        if T_blackbody > 0:
+            st.subheader("Blackbody shortcut")
+            data = make_display_df(eps_grid, final)
+            st.dataframe(data, use_container_width=True)
+            plot_spectrum(eps_grid, final, "Inverse Compton Result (Blackbody shortcut)")
+        else:
+            st.subheader("Blackbody shortcut")
+            st.write("Set a positive temperature in the sidebar to display this branch.")
 
-    data = pd.DataFrame({
-        "Epsilon": [f"{x:.6e}" for x in eps_grid],
-        "Volume Emissivity": [f"{x:.6e}" for x in final],
-    })
-    st.dataframe(data, use_container_width=True)
-    plot_spectrum(eps_grid, final, "Inverse Compton Result")
+    st.latex(r"\frac{dE}{dVdt d\epsilon_1} = \pi c r_0^2 C A(p)\epsilon_1^{-(p-1)/2}\int d\epsilon\, \epsilon^{(p-1)/2} v(\epsilon)")
+    st.latex(r"A(p) = 2^{p+3}\frac{p^2+4p+11}{(p+3)^2(p+5)(p+1)}")
+    st.latex(r"C = N_0 (m_e c^2)^{-p}")
 
-    if T and T > 0:
-        st.latex(r"\frac{dE}{dVdt d\epsilon_1} = \frac{C 8\pi^2 r_0^2}{h^3 c^2}(kT)^{(p+5)/2}F(p)\epsilon_1^{-(p-1)/2}")
-
-elif distribution == "Maxwell-Jüttner":
-    st.sidebar.header("Maxwell-Jüttner inputs")
-    nth = st.sidebar.number_input("Thermal electron density n_th", value=1.0e6, min_value=0.0)
-    T = st.sidebar.number_input("Temperature T (K)", value=1.0e8, min_value=0.0)
-
-    gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
-    ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T)
-    emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
-
+# =============================================================================
+# Maxwell-Jüttner tab
+# =============================================================================
+with tab_mj:
     st.header("Maxwell-Jüttner Distribution")
-    data = pd.DataFrame({
-        "Epsilon": [f"{x:.6e}" for x in eps_grid],
-        "Volume Emissivity": [f"{x:.6e}" for x in emissivity],
-    })
-    st.dataframe(data, use_container_width=True)
-    plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Jüttner)")
 
-    theta = (KB_KEV_PER_K * T) / ME_C2_KEV
-    st.latex(r"N_{MJ}(\gamma)=\frac{n_{th}\gamma^2\beta}{\Theta K_2(1/\Theta)}e^{-\gamma/\Theta}")
-    st.write(f"Theta = {theta:.4e}")
+    if besselk is None:
+        st.error("SciPy is required for the Maxwell-Jüttner branch because it uses the modified Bessel function K₂.")
+    else:
+        gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
+        ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
+        emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
-elif distribution == "Maxwell-Boltzmann":
-    st.sidebar.header("Maxwell-Boltzmann inputs")
-    nth = st.sidebar.number_input("Thermal electron density n_th", value=1.0e6, min_value=0.0)
-    T = st.sidebar.number_input("Temperature T (K)", value=1.0e8, min_value=0.0)
+        data_mj = make_display_df(eps_grid, emissivity)
+        st.dataframe(data_mj, use_container_width=True)
+        plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Jüttner)")
+
+        theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+        st.latex(r"N_{MJ}(\gamma)=\frac{n_{th}\gamma^2\beta}{\Theta K_2(1/\Theta)}e^{-\gamma/\Theta}")
+        st.write(f"Theta = {theta:.4e}")
+
+# =============================================================================
+# Maxwell-Boltzmann tab
+# =============================================================================
+with tab_mb:
+    st.header("Maxwell-Boltzmann Distribution")
 
     gamma_grid = np.linspace(gamma_min, gamma_max, int(n_gamma))
-    ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T)
+    ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
     emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
-    st.header("Maxwell-Boltzmann Distribution")
-    data = pd.DataFrame({
-        "Epsilon": [f"{x:.6e}" for x in eps_grid],
-        "Volume Emissivity": [f"{x:.6e}" for x in emissivity],
-    })
-    st.dataframe(data, use_container_width=True)
+    data_mb = make_display_df(eps_grid, emissivity)
+    st.dataframe(data_mb, use_container_width=True)
     plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Boltzmann)")
 
     st.latex(r"N_{MB}(E)=n_{th}\frac{2}{\sqrt{\pi}(kT)^{3/2}}\sqrt{E}e^{-E/kT}")
-    st.write(f"kT = {KB_KEV_PER_K * T:.4e} keV")
+    st.write(f"kT = {KB_KEV_PER_K * T_thermal:.4e} keV")
 
+# -----------------------------------------------------------------------------
+# Footer
+# -----------------------------------------------------------------------------
 st.markdown(
     """
     <div style='text-align: right;'>
