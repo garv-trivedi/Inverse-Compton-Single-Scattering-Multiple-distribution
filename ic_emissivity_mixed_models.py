@@ -354,7 +354,7 @@ with tab_mj:
         g_min = 1.0 + (1e-4 * theta) 
         g_max_thermal = 1.0 + (25.0 * theta)
         
-        gamma_grid = np.linspace(g_min, g_max_thermal, int(n_gamma))
+        gamma_grid = np.logspace(np.log10(g_min), np.log10(g_max_thermal), int(n_gamma))
 
         ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
         emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
