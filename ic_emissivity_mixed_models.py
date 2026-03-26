@@ -32,7 +32,7 @@ kB_SI = 1.38e-23
 PI = np.pi
 
 # -----------------------------------------------------------------------------
-# Helpers
+# Functions 
 # -----------------------------------------------------------------------------
 def integrate(y, x, axis=-1):
     """SciPy Simpson if available, otherwise fallback to trapezoidal."""
@@ -59,9 +59,6 @@ def log_or_linear_grid(lo, hi, npts):
         return np.logspace(np.log10(lo), np.log10(hi), npts)
     return np.linspace(lo, hi, npts)
 
-# -----------------------------------------------------------------------------
-# Your original power-law branch
-# -----------------------------------------------------------------------------
 def findc(q_pl, B, p):
     y = 3 - p
     v = m * (C**2)
@@ -128,9 +125,6 @@ def powerlaw_emissivity(eps_grid, p, seed_E, seed_V, q_pl, B, alpha, F, vref, th
     final2 = constt2 * eps_grid**(-((p - 1) / 2)) * 1.6e-16
     return final, final2
 
-# -----------------------------------------------------------------------------
-# Thermal electron distributions from your notes
-# -----------------------------------------------------------------------------
 def maxwell_juttner_ne_gamma(gamma, nth, T):
     """
     N_MJ(gamma) = nth * gamma^2 * beta / (Theta * K2(1/Theta)) * exp(-gamma/Theta)
@@ -303,14 +297,14 @@ def make_display_df(x, y):
     })
 
 # -----------------------------
-# Tabs: show all three models
+# Tabs
 # -----------------------------
 tab_powerlaw, tab_mj, tab_mb = st.tabs(
     ["Power law", "Maxwell-Jüttner", "Maxwell-Boltzmann"]
 )
 
 # =============================================================================
-# Power-law tab
+# Power-law 
 # =============================================================================
 with tab_powerlaw:
     st.header("Power Law Distribution")
@@ -345,7 +339,7 @@ with tab_powerlaw:
     st.latex(r"C = N_0 (m_e c^2)^{-p}")
 
 # =============================================================================
-# Maxwell-Jüttner tab
+# Maxwell-Juttner 
 # =============================================================================
 with tab_mj:
     st.header("Maxwell-Jüttner Distribution")
@@ -368,7 +362,7 @@ with tab_mj:
         st.dataframe(make_display_df(eps_grid, emissivity), use_container_width=True)
         plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Jüttner)")
 # =============================================================================
-# Maxwell-Boltzmann tab
+# Maxwell-Boltzmann 
 # =============================================================================
 with tab_mb:
     st.header("Maxwell-Boltzmann Distribution")
