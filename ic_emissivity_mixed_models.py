@@ -244,9 +244,23 @@ uploaded_file = st.sidebar.file_uploader(
 
 st.sidebar.write("File must contain columns named `Epsilon` and `V_Epsilon`.")
 
-if uploaded_file is None:
-    st.info("Upload a seed-photon file with columns `Epsilon` and `V_Epsilon` to run the model.")
-    st.stop()
+use_sample = st.sidebar.checkbox("Use Sample.txt (default)", value=True)
+
+if use_sample:
+    try:
+        seed_df = load_seed_spectrum("Sample.txt")
+        st.success("Using Sample.txt as default seed photon spectrum")
+    except Exception as e:
+        st.error(f"Failed to load Sample.txt: {e}")
+        st.stop()
+
+else:
+    if uploaded_file is None:
+        st.warning("Please upload a file or enable 'Use Sample.txt'")
+        st.stop()
+    
+    seed_df = load_seed_spectrum(uploaded_file)
+    st.success(f"Using uploaded file: {uploaded_file.name}")
 
 seed_df = load_seed_spectrum(uploaded_file)
 seed_E = seed_df["Epsilon"].to_numpy(dtype=float)
