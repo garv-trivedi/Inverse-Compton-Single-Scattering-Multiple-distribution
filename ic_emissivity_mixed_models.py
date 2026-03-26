@@ -344,7 +344,7 @@ gamma_peak = 1 + theta
 gamma_max_eff = 1 + 10 * theta
 gamma_max_eff = max(gamma_max_eff, 5)
 
-# ✅ DEFINE gamma_grid HERE
+#  DEFINE gamma_grid HERE
 gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
 
 # Epsilon grid
@@ -354,7 +354,7 @@ eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), int(n_out))
 ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
 
 # (optional normalization)
-ne_gamma = ne_gamma / np.trapz(ne_gamma, gamma_grid) * nth
+ne_gamma = ne_gamma / integrate(ne_gamma, gamma_grid) * nth
 
 # Emissivity
 emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
@@ -370,7 +370,7 @@ gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
 eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), int(n_out))
 
 ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
-ne_gamma = ne_gamma / np.trapz(ne_gamma, gamma_grid) * nth
+ne_gamma = ne_gamma / integrate(ne_gamma, gamma_grid) * nth
 
 emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
