@@ -248,16 +248,16 @@ seed_E = seed_df["Epsilon"].to_numpy(dtype=float)
 seed_V = seed_df["V_Epsilon"].to_numpy(dtype=float)
 
 st.sidebar.header("Output grid")
-lower_E = st.sidebar.number_input("Lower limit of epsilon", value=float(max(seed_E.min(), 1e-8)))
-upper_E = st.sidebar.number_input("Upper limit of epsilon", value=float(seed_E.max() * 10 if seed_E.max() > 0 else 100.0))
-n_out = st.sidebar.number_input("Number of output points", value=100, min_value=3, max_value=2000)
+lower_E = st.sidebar.number_input("Lower limit of epsilon", value=1e-2, min_value=1e-12, format="%.2e")
+upper_E = st.sidebar.number_input("Upper limit of epsilon", value=1e3, min_value=1e-12, format="%.2e")
+n_out = st.sidebar.number_input("Number of output points", value=200, min_value=3, max_value=2000)
 
 eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
 
 st.sidebar.header("General thermal-grid settings")
 gamma_min = st.sidebar.number_input("Gamma min", value=1.0, min_value=1.0)
-gamma_max = st.sidebar.number_input("Gamma max", value=1e5, min_value=1.0)
-n_gamma = st.sidebar.number_input("Gamma grid points", value=250, min_value=20, max_value=5000)
+gamma_max = st.sidebar.number_input("Gamma max", value=5.0, min_value=1.0)
+n_gamma = st.sidebar.number_input("Gamma grid points", value=300, min_value=20, max_value=5000)
 
 # -----------------------------
 # Power-law parameters
