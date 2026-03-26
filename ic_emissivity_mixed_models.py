@@ -252,7 +252,7 @@ lower_E = st.sidebar.number_input("Lower limit of epsilon", value=float(max(seed
 upper_E = st.sidebar.number_input("Upper limit of epsilon", value=float(seed_E.max() * 10 if seed_E.max() > 0 else 100.0))
 n_out = st.sidebar.number_input("Number of output points", value=100, min_value=3, max_value=2000)
 
-eps_grid = log_or_linear_grid(lower_E, upper_E, n_out)
+eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
 
 st.sidebar.header("General thermal-grid settings")
 gamma_min = st.sidebar.number_input("Gamma min", value=1.0, min_value=1.0)
@@ -350,7 +350,7 @@ with tab_mj:
 # prevent too small range
         gamma_max_eff = max(gamma_max_eff, 5)
 
-        gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
+        eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
         ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
         emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
@@ -376,7 +376,7 @@ with tab_mb:
 # prevent too small range
     gamma_max_eff = max(gamma_max_eff, 5)
 
-    gamma_grid = np.linspace(1, gamma_max_eff, int(n_gamma))
+    eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
     ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
     emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
