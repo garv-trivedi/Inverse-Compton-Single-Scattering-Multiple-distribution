@@ -1,4 +1,5 @@
 
+
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -210,25 +211,18 @@ def thermal_ic_emissivity(eps_s_grid, seed_eps, seed_n, gamma_grid, ne_gamma):
 # -----------------------------------------------------------------------------
 def plot_spectrum(x, y, title, x_label="Epsilon", y_label="Volume Emissivity"):
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Use a small floor value to avoid log(0) issues without breaking the plot
-    y_safe = np.maximum(y, 1e-20) 
-    
-    ax.plot(x, y_safe)
+    ax.plot(x, y)
     ax.set_title(title)
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
 
-    # Force log-log scale for astrophysical spectra
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    
-    # Set reasonable limits so the floor doesn't squash the graph
-    if np.max(y) > 0:
-        ax.set_ylim(np.max(y) * 1e-8, np.max(y) * 2)
+    if np.all(np.asarray(x) > 0) and np.all(np.asarray(y) > 0):
+        ax.set_xscale("log")
+        ax.set_yscale("log")
 
     ax.grid(True, which="both", alpha=0.3)
     st.pyplot(fig)
+
 # -----------------------------------------------------------------------------
 # Streamlit UI
 # -----------------------------------------------------------------------------
@@ -342,30 +336,34 @@ with tab_powerlaw:
 # =============================================================================
 # Maxwell-Jüttner tab
 # =============================================================================
-with tab_mb:
-    st.header("Maxwell-Boltzmann Distribution")
+with tab_mj:
+    st.header("Maxwell-Jüttner Distribution")
 
-    # 1. Calculate thermal energy scale
-    kT_keV = KB_KEV_PER_K * T_thermal
-    
-    # 2. OPTIMIZE GRID:
-    # MB distribution peaks at E = 0.5 * kT. We sample up to 15 * kT.
-    E_min = 1e-3 
-    E_max = 15.0 * kT_keV
-    
-    # Sample energy linearly, then convert to gamma
-    energy_grid = np.linspace(E_min, E_max, int(n_gamma))
-    gamma_grid = 1.0 + (energy_grid / ME_C2_KEV)
+    if besselk is None:
+        st.error("SciPy is required for the Maxwell-Jüttner branch.")
+    else:
+        # 1. Calculate the dimensionless temperature
+        theta = (KB_KEV_PER_K * T_thermal) / ME_C2_KEV
+        
+        # 2. OPTIMIZE GRID: 
+        # MJ peak is roughly at 1 + theta. We look from 1 up to 1 + 25*theta 
+        # to capture the tail of the distribution.
+        g_min = 1.000001  # Slightly above 1 to avoid beta=0
+        g_max_thermal = 1.0 + (25.0 * theta)
+        
+        # Use a linear grid for thermal distributions to get even sampling across the peak
+        gamma_grid = np.linspace(g_min, g_max_thermal, int(n_gamma))
 
-    ne_gamma = maxwell_boltzmann_ne_gamma(gamma_grid, nth, T_thermal)
-    emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
+        ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
+        emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
 
-    data_mb = make_display_df(eps_grid, emissivity)
-    st.dataframe(data_mb, use_container_width=True)
-    plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Boltzmann)")
+        data_mj = make_display_df(eps_grid, emissivity)
+        st.dataframe(data_mj, use_container_width=True)
+        plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Jüttner)")
 
-    st.latex(r"N_{MB}(E)=n_{th}\frac{2}{\sqrt{\pi}(kT)^{3/2}}\sqrt{E}e^{-E/kT}")
-    st.write(f"kT = {kT_keV:.4e} keV")
+        st.latex(r"N_{MJ}(\gamma)=\frac{n_{th}\gamma^2\beta}{\Theta K_2(1/\Theta)}e^{-\gamma/\Theta}")
+        st.write(f"Theta ($\Theta$) = {theta:.4e}")
+        st.info(f"Grid optimized for peak at $\gamma \approx {1+theta:.4f}$")
 # =============================================================================
 # Maxwell-Boltzmann tab
 # =============================================================================
@@ -405,4 +403,5 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
