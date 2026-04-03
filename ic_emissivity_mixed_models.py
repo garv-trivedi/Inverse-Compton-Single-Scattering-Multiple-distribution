@@ -463,12 +463,10 @@ with tab5:
 st.markdown(
     """
     <div style='text-align: right;'>
-        <p><strong>Inverse-Compton multi-case proof-of-concept</strong></p>
+        <p><strong>By Garv Trivedi</strong></p>
+        <p><strong>under guidance of Dr. C. Konar</strong></p>
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True   # ✅ aligned with the triple quotes
 )
-    unsafe_allow_html=True
-)
-
 
