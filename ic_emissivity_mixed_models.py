@@ -467,6 +467,6 @@ st.markdown(
         <p><strong>under guidance of Dr. C. Konar</strong></p>
     </div>
     """,
-    unsafe_allow_html=True   # ✅ aligned with the triple quotes
+    unsafe_allow_html=True  
 )
 
