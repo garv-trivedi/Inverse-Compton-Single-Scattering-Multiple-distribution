@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Page setup
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="Inverse Compton Multi-Case Simulator", layout="wide")
-st.title("Inverse Compton Up-scattering: 5 Seed/Electron Combinations")
+st.title("Inverse Compton Up-scattering for various electron populations")
 
 st.caption(
     "This proof-of-concept uses one shared inverse-Compton kernel for all five cases. "
