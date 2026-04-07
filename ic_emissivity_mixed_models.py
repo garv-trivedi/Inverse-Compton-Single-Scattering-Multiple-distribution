@@ -388,7 +388,7 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
             seed_Fnu,
             "Raw seed photon spectrum",
             "Frequency ν (Hz)",
-            "Flux density (arb. units)",
+            "Flux density (W m^-2 Hz^-1)",
         )
 
     with c2:
@@ -397,7 +397,7 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
             ne,
             "Electron spectrum",
             "Electron energy ε (keV)",
-            "N(ε) (arb. units / keV)",
+            "N(ε)",
         )
 
     with c3:
@@ -406,7 +406,7 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
             emiss,
             "Scattered volume emissivity",
             "Scattered photon energy ε₁ (keV)",
-            "Volume emissivity (arb. units)",
+            "Volume emissivity (J s^-1 keV^-1 m^-3)",
         )
 
     out_df = pd.DataFrame(
