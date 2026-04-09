@@ -107,33 +107,35 @@ def seed_blackbody_nu(nu, T_seed_K, norm):
 
 def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
     """
-    Correct multicolor disk blackbody spectrum.
-    Produces ν^(1/3) slope at low frequencies.
+    Physically correct multicolor disk blackbody spectrum.
+    Produces:
+    - ν^(1/3) at low frequency
+    - exponential cutoff at high frequency
     """
+
     nu = np.asarray(nu, dtype=float)
 
-
+    # Log-spaced radius (CRUCIAL)
     r = np.logspace(0.0, np.log10(rout_over_rin), int(n_r))
 
- 
+    # Temperature profile: T(r) ~ r^(-3/4)
     T_r = Tin_K * r**(-3.0/4.0)
 
+    # Broadcast
     nu2d = nu[None, :]
     Tr2d = T_r[:, None]
 
-
+    # Planck exponent
     x = (H * nu2d) / (KB_SI * Tr2d)
     x = np.clip(x, 1e-10, 700)
 
     Bnu = (2.0 * H * nu2d**3 / C**2) / (np.exp(x) - 1.0)
 
-   
-    integrand = r[:, None] * Bnu
+    # FULL geometric factor
+    integrand = 2.0 * PI * r[:, None] * Bnu
 
-    Fnu = integrate(integrand, x=r, axis=0)
-
-    
-    Fnu = Fnu / np.max(Fnu)
+    # Integrate over log(r) → correct weighting
+    Fnu = integrate(integrand, x=np.log(r), axis=0)
 
     return norm * Fnu
 
