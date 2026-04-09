@@ -145,7 +145,7 @@ def electron_powerlaw_E(E_keV, p, nth, Emin_keV, Emax_keV):
     shape = gamma ** (-p)
     mask = (E_keV >= Emin_keV) & (E_keV <= Emax_keV)
     shape = np.where(mask, shape, 0.0)
-    shape = shape / ME_C2_KEV  # convert N(gamma) to N(E)
+    shape = E_keV ** (-p)
     return normalize_to_area(E_keV, shape, nth)
 
 
