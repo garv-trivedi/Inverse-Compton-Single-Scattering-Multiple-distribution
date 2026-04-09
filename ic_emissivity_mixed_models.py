@@ -282,29 +282,30 @@ nth = st.sidebar.number_input("Thermal electron density n_th", value=1e6, min_va
 # -----------------------------------------------------------------------------
 def make_powerlaw_powerlaw_case():
     nu = positive_log_grid(pl_seed_nu_min, pl_seed_nu_max, int(n_seed))
-    seed_Fnu = seed_powerlaw_nu(nu, pl_seed_alpha, seed_amp, pl_seed_nu_min, pl_seed_nu_max, pl_seed_nu0)
+    seed_Fnu = seed_powerlaw_nu(nu, pl_seed_alpha, seed_amp,
+                               pl_seed_nu_min, pl_seed_nu_max, pl_seed_nu0)
     seed_eps = nu_to_eps_keV(nu)
     seed_n = flux_to_seed_number_density(nu, seed_Fnu)
 
     e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
     ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
-   # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
-   slope = (pl_e_p - 1.0) / 2.0
+    # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
+    slope = (pl_e_p - 1.0) / 2.0
 
-   # Get a normalization from the numerical IC (just shape anchor)
-   emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
+    # Get normalization from numerical IC (just to anchor amplitude)
+    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
 
     # Avoid zeros
     valid = emiss_num > 0
     if np.any(valid):
-       norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
+        norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
     else:
-       norm = 1.0
-  
-    emiss = norm * eps_s_grid ** (-slope)
-    return nu, seed_Fnu, e_grid, ne, emiss
+        norm = 1.0
 
+    emiss = norm * eps_s_grid ** (-slope)
+
+    return nu, seed_Fnu, e_grid, ne, emiss
 
 def make_blackbody_powerlaw_case():
     nu_peak = max(peak_nu_from_T(bb_T), 1e8)
@@ -317,21 +318,21 @@ def make_blackbody_powerlaw_case():
     ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
     
-   # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
-   slope = (pl_e_p - 1.0) / 2.0
+  # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
+    slope = (pl_e_p - 1.0) / 2.0
 
-   # Get a normalization from the numerical IC (just shape anchor)
-   emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
+    # Get normalization from numerical IC (just to anchor amplitude)
+    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
 
     # Avoid zeros
     valid = emiss_num > 0
     if np.any(valid):
-       norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
+        norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
     else:
-       norm = 1.0
-  
+        norm = 1.0
+
     emiss = norm * eps_s_grid ** (-slope)
-    return nu, seed_Fnu, e_grid, ne, emiss
+
     return nu, seed_Fnu, e_grid, ne, emiss
 
 
@@ -353,20 +354,20 @@ def make_mcd_powerlaw_case():
 
     
    # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
-   slope = (pl_e_p - 1.0) / 2.0
+    slope = (pl_e_p - 1.0) / 2.0
 
-   # Get a normalization from the numerical IC (just shape anchor)
-   emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
+    # Get normalization from numerical IC (just to anchor amplitude)
+    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
 
     # Avoid zeros
     valid = emiss_num > 0
     if np.any(valid):
-       norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
+        norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
     else:
-       norm = 1.0
-  
+        norm = 1.0
+
     emiss = norm * eps_s_grid ** (-slope)
-    return nu, seed_Fnu, e_grid, ne, emiss
+
     return nu, seed_Fnu, e_grid, ne, emiss
 
 
