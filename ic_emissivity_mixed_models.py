@@ -105,26 +105,37 @@ def seed_blackbody_nu(nu, T_seed_K, norm):
     return norm * (2.0 * H * nu**3 / C**2) / np.expm1(x)
 
 
-def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=200):
+def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
     """
-    Multicolor blackbody disk shape:
-    F_nu ∝ ∫ 2π r B_nu[T(r)] dr, with T(r) = Tin * (r/rin)^(-3/4)
-    Here r is dimensionless in units of rin.
+    Correct multicolor disk blackbody spectrum.
+    Produces ν^(1/3) slope at low frequencies.
     """
     nu = np.asarray(nu, dtype=float)
+
+
     r = np.logspace(0.0, np.log10(rout_over_rin), int(n_r))
-    T_r = Tin_K * r ** (-0.75)
+
+ 
+    T_r = Tin_K * r**(-3.0/4.0)
 
     nu2d = nu[None, :]
     Tr2d = T_r[:, None]
+
+
     x = (H * nu2d) / (KB_SI * Tr2d)
-    x = np.clip(x, 1e-12, 700.0)
+    x = np.clip(x, 1e-10, 700)
 
-    Bnu = (2.0 * H * nu2d**3 / C**2) / np.expm1(x)
-    integrand = 2.0 * PI * r[:, None] * Bnu
+    Bnu = (2.0 * H * nu2d**3 / C**2) / (np.exp(x) - 1.0)
+
+   
+    integrand = r[:, None] * Bnu
+
     Fnu = integrate(integrand, x=r, axis=0)
-    return norm * Fnu
 
+    
+    Fnu = Fnu / np.max(Fnu)
+
+    return norm * Fnu
 
 def flux_to_seed_number_density(nu, Fnu):
     """
