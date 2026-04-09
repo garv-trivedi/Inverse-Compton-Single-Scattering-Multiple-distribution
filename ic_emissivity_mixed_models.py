@@ -131,12 +131,8 @@ def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
 
     Bnu = (2.0 * H * nu2d**3 / C**2) / (np.exp(x) - 1.0)
 
-    # FULL geometric factor
-    integrand = 2.0 * PI * r[:, None] * Bnu
-
-    # Integrate over log(r) → correct weighting
+    integrand = 2.0 * PI * r[:, None]**2 * Bnu
     Fnu = integrate(integrand, x=np.log(r), axis=0)
-
     return norm * Fnu
 
 def flux_to_seed_number_density(nu, Fnu):
