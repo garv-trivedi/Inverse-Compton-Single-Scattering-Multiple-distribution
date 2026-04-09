@@ -129,8 +129,16 @@ def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
     x = (H * nu2d) / (KB_SI * Tr2d)
     x = np.clip(x, 1e-10, 700)
 
-    Bnu = (2.0 * H * nu2d**3 / C**2) / (np.exp(x) - 1.0)
+    Bnu = np.zeros_like(nu2d)
 
+
+    mask_rj = x < 1e-2
+    Bnu[mask_rj] = (2.0 * nu2d[mask_rj]**2 * KB_SI * Tr2d[mask_rj]) / C**2
+
+    mask_wien = ~mask_rj
+    exp_x = np.exp(np.clip(x[mask_wien], None, 700))
+    Bnu[mask_wien] = (2.0 * H * nu2d[mask_wien]**3 / C**2) * np.exp(-x[mask_wien])
+    
     integrand = 2.0 * PI * r[:, None]**2 * Bnu
     Fnu = integrate(integrand, x=np.log(r), axis=0)
     return norm * Fnu
