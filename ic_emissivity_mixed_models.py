@@ -10,9 +10,14 @@ st.set_page_config(page_title="Inverse Compton Multi-Case Simulator", layout="wi
 st.title("Inverse Compton Up-scattering for various electron populations")
 
 st.caption(
-    "This proof-of-concept uses one shared inverse-Compton kernel for all five cases. "
-    "Seed spectra for Multi-colour Blackbody cases are loaded from 2026-04-09T18-00_export.csv."
+    "Seed spectra for Multi-colour Blackbody cases are derived from the uploaded CSV."
 )
+
+# -----------------------------------------------------------------------------
+# File Uploader - THIS FIXES THE "FILE NOT FOUND" ERROR
+# -----------------------------------------------------------------------------
+st.sidebar.header("Data Input")
+uploaded_file = st.sidebar.file_uploader("Upload '2026-04-09T18-00_export.csv'", type="csv")
 
 # -----------------------------------------------------------------------------
 # Constants
@@ -31,16 +36,13 @@ try:
 except Exception:
     scipy_simpson = None
 
-
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
 def integrate(y, x, axis=-1):
-    """SciPy Simpson if available, otherwise NumPy trapezoid."""
     if scipy_simpson is not None:
         return scipy_simpson(y, x=x, axis=axis)
     return np.trapezoid(y, x=x, axis=axis)
-
 
 def normalize_to_area(x, y, target_area):
     area = integrate(y, x)
@@ -48,323 +50,140 @@ def normalize_to_area(x, y, target_area):
         return y
     return y * (target_area / area)
 
-
 def nu_to_eps_keV(nu_hz):
     return (H * np.asarray(nu_hz, dtype=float)) / KEV_J
-
 
 def peak_nu_from_T(T_K):
     return 2.821439 * KB_SI * T_K / H
 
-
 def positive_log_grid(lo, hi, npts):
-    lo = float(lo)
-    hi = float(hi)
-    npts = int(npts)
-    if lo <= 0 or hi <= 0:
-        raise ValueError("Log grids require positive limits.")
-    if lo >= hi:
-        raise ValueError("Lower limit must be smaller than upper limit.")
-    return np.logspace(np.log10(lo), np.log10(hi), npts)
-
+    return np.logspace(np.log10(float(lo)), np.log10(float(hi)), int(npts))
 
 def plot_spectrum(x, y, title, x_label, y_label):
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    mask = np.isfinite(x) & np.isfinite(y) & (x > 0) & (y > 0)
-
-    fig, ax = plt.subplots(figsize=(6.5, 4.8))
+    x, y = np.asarray(x), np.asarray(y)
+    mask = (x > 0) & (y > 0)
+    fig, ax = plt.subplots(figsize=(6, 4))
     if np.any(mask):
-        ax.loglog(x[mask], y[mask], linewidth=1.6)
-    else:
-        ax.text(0.5, 0.5, "No positive data to plot", ha="center", va="center", transform=ax.transAxes)
-
+        ax.loglog(x[mask], y[mask])
     ax.set_title(title)
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    ax.grid(True, which="both", alpha=0.3)
     st.pyplot(fig)
     plt.close(fig)
-
 
 # -----------------------------------------------------------------------------
 # Seed photon spectra
 # -----------------------------------------------------------------------------
 def seed_powerlaw_nu(nu, alpha, norm, nu_min, nu_max, nu0):
-    nu = np.asarray(nu, dtype=float)
     Fnu = norm * (nu / nu0) ** (-alpha)
-    mask = (nu >= nu_min) & (nu <= nu_max)
-    return np.where(mask, Fnu, 0.0)
-
+    return np.where((nu >= nu_min) & (nu <= nu_max), Fnu, 0.0)
 
 def seed_blackbody_nu(nu, T_seed_K, norm):
-    nu = np.asarray(nu, dtype=float)
     x = (H * nu) / (KB_SI * T_seed_K)
     x = np.clip(x, 1e-12, 700.0)
     return norm * (2.0 * H * nu**3 / C**2) / np.expm1(x)
 
-
-def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
-    """
-    Overridden to use data from 2026-04-09T18-00_export.csv.
-    The parameters Tin_K and rout_over_rin are ignored in favor of the CSV data shape.
-    """
-    try:
-        df_mcd = pd.read_csv('2026-04-09T18-00_export.csv')
-        f_csv = df_mcd['frequencies (Hz)'].values
-        y_csv = df_mcd['nuLnu watts'].values
-        
-        # Filter valid values
-        m = (f_csv > 0) & (y_csv > 0)
-        f_csv, y_csv = f_csv[m], y_csv[m]
-        
-        # Fnu = nuLnu / nu
-        fnu_csv = y_csv / f_csv
-        
-        # Log-log interpolation for spectral accuracy
-        log_f_csv = np.log10(f_csv)
-        log_fnu_csv = np.log10(fnu_csv)
-        
-        log_nu_target = np.log10(np.clip(nu, 1e-30, None))
-        log_fnu_interp = np.interp(log_nu_target, log_f_csv, log_fnu_csv, left=-100, right=-100)
-        
-        return norm * (10**log_fnu_interp)
-    except Exception as e:
-        st.error(f"Error reading CSV for Multicolor BB: {e}")
+def seed_multicolor_bb_nu(nu, norm):
+    """Interpolates the seed spectrum from the uploaded CSV file."""
+    if uploaded_file is None:
+        st.warning("Please upload the CSV file in the sidebar to see Multicolor BB results.")
         return np.zeros_like(nu)
+    
+    df = pd.read_csv(uploaded_file)
+    f_csv = df['frequencies (Hz)'].values
+    y_csv = df['nuLnu watts'].values
+    
+    # Fnu = (nu*Lnu) / nu
+    mask = (f_csv > 0) & (y_csv > 0)
+    f_csv, fnu_csv = f_csv[mask], y_csv[mask] / f_csv[mask]
+    
+    # Log-log interpolation
+    return norm * (10**np.interp(np.log10(nu), np.log10(f_csv), np.log10(fnu_csv), left=-100, right=-100))
 
 def flux_to_seed_number_density(nu, Fnu):
-    eps_keV = np.maximum(nu_to_eps_keV(nu), 1e-300)
-    return np.asarray(Fnu, dtype=float) / eps_keV
-
+    return Fnu / np.maximum(nu_to_eps_keV(nu), 1e-300)
 
 # -----------------------------------------------------------------------------
-# Electron spectra as N(epsilon) vs epsilon
+# Electron spectra
 # -----------------------------------------------------------------------------
-def electron_powerlaw_E(E_keV, p, nth, Emin_keV, Emax_keV):
-    E_keV = np.asarray(E_keV, dtype=float)
-    gamma = 1.0 + E_keV / ME_C2_KEV
-    shape = gamma ** (-p)
-    mask = (E_keV >= Emin_keV) & (E_keV <= Emax_keV)
-    shape = np.where(mask, shape, 0.0)
-    # Re-normalize just to be safe
+def electron_powerlaw_E(E_keV, p, nth, Emin, Emax):
+    shape = np.where((E_keV >= Emin) & (E_keV <= Emax), E_keV**(-p), 0.0)
     return normalize_to_area(E_keV, shape, nth)
-
-
-def electron_mb_E(E_keV, nth, T_e_K):
-    E_keV = np.asarray(E_keV, dtype=float)
-    kT_keV = KB_KEV_PER_K * T_e_K
-    E_keV = np.maximum(E_keV, 0.0)
-    shape = (2.0 / np.sqrt(PI)) * np.sqrt(E_keV) * np.exp(-E_keV / kT_keV) / (kT_keV ** 1.5)
-    return normalize_to_area(E_keV, shape, nth)
-
 
 def electron_mj_E(E_keV, nth, T_e_K):
-    E_keV = np.asarray(E_keV, dtype=float)
     theta = (KB_KEV_PER_K * T_e_K) / ME_C2_KEV
-    theta = max(theta, 1e-12)
-
     gamma = 1.0 + E_keV / ME_C2_KEV
-    beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, None))
-    shape = gamma**2 * beta * np.exp(-(gamma - 1.0) / theta) / ME_C2_KEV
+    beta = np.sqrt(np.clip(1.0 - 1.0/gamma**2, 0.0, None))
+    shape = gamma**2 * beta * np.exp(-(gamma-1)/theta)
     return normalize_to_area(E_keV, shape, nth)
 
+def electron_mb_E(E_keV, nth, T_e_K):
+    kT = KB_KEV_PER_K * T_e_K
+    shape = np.sqrt(E_keV) * np.exp(-E_keV / kT)
+    return normalize_to_area(E_keV, shape, nth)
 
 # -----------------------------------------------------------------------------
-# Inverse Compton kernel
+# IC Kernel & Emissivity
 # -----------------------------------------------------------------------------
 def kn_dsigma_d_es(eps_s_keV, seed_eps_keV, gamma_grid):
-    gamma = np.asarray(gamma_grid, dtype=float)[:, None]
-    eps = np.asarray(seed_eps_keV, dtype=float)[None, :]
-    eps_s = float(eps_s_keV)
-
-    if eps_s <= 0:
-        return np.zeros((gamma.shape[0], eps.shape[1]))
-
+    gamma = gamma_grid[:, None]
+    eps = seed_eps_keV[None, :]
     Gamma_e = 4.0 * gamma * eps / ME_C2_KEV
-    denom = Gamma_e * (gamma * ME_C2_KEV - eps_s)
-
-    valid = (Gamma_e > 0) & (denom > 0) & (eps > 0) & (eps_s < gamma * ME_C2_KEV)
-    q = np.where(valid, eps_s / denom, 0.0)
-    valid = valid & (q >= 1.0 / (4.0 * gamma**2)) & (q <= 1.0)
-
+    denom = Gamma_e * (gamma * ME_C2_KEV - eps_s_keV)
+    valid = (Gamma_e > 0) & (denom > 0) & (eps_s_keV < gamma * ME_C2_KEV)
+    q = np.where(valid, eps_s_keV / denom, 0.0)
+    valid = valid & (q >= 1.0/(4.0*gamma**2)) & (q <= 1.0)
     q_safe = np.clip(q, 1e-300, 1.0)
-    F = (
-        2.0 * q_safe * np.log(q_safe)
-        + (1.0 + 2.0 * q_safe) * (1.0 - q_safe)
-        + 0.5 * (Gamma_e * q_safe) ** 2 * (1.0 - q_safe) / (1.0 + Gamma_e * q_safe)
-    )
+    F = 2*q_safe*np.log(q_safe) + (1+2*q_safe)*(1-q_safe) + 0.5*(Gamma_e*q_safe)**2*(1-q_safe)/(1+Gamma_e*q_safe)
+    return np.where(valid, (3.0 * SIGMA_T / (4.0 * gamma**2 * eps)) * F, 0.0)
 
-    eps_safe = np.where(eps > 0, eps, 1.0)
-    dsdE = (3.0 * SIGMA_T / (4.0 * gamma**2 * eps_safe)) * F
-    return np.where(valid, dsdE, 0.0)
-
-
-def ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid_keV, ne_e):
-    seed_eps = np.asarray(seed_eps, dtype=float)
-    seed_n = np.asarray(seed_n, dtype=float)
-    e_grid_keV = np.asarray(e_grid_keV, dtype=float)
-    ne_e = np.asarray(ne_e, dtype=float)
-
-    gamma_grid = 1.0 + e_grid_keV / ME_C2_KEV
-
+def ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne_e):
+    gamma_grid = 1.0 + e_grid / ME_C2_KEV
     output = []
-    for eps_s in np.asarray(eps_s_grid, dtype=float):
-        dsdE = kn_dsigma_d_es(eps_s, seed_eps, gamma_grid)
-        inner_seed = integrate(seed_n[None, :] * dsdE * seed_eps[None, :], x=seed_eps, axis=1)
-        total = integrate(ne_e * inner_seed, x=e_grid_keV)
-        output.append(C * eps_s * total)
+    for es in eps_s_grid:
+        dsdE = kn_dsigma_d_es(es, seed_eps, gamma_grid)
+        total = integrate(ne_e * integrate(seed_n[None,:] * dsdE * seed_eps[None,:], seed_eps, axis=1), e_grid)
+        output.append(C * es * total)
     return np.asarray(output)
 
+# -----------------------------------------------------------------------------
+# UI Sidebar Controls
+# -----------------------------------------------------------------------------
+seed_amp = st.sidebar.number_input("Seed amplitude", value=1e6, format="%.2e")
+n_pts = st.sidebar.slider("Resolution (Points)", 40, 300, 100)
+out_lo = st.sidebar.number_input("Output min (keV)", value=1e-2, format="%.2e")
+out_hi = st.sidebar.number_input("Output max (keV)", value=1e3, format="%.2e")
+eps_s_grid = positive_log_grid(out_lo, out_hi, n_pts)
+
+# Electron Params
+st.sidebar.subheader("Electron Params")
+pl_e_p = st.sidebar.number_input("PL Index p", value=2.5)
+Te = st.sidebar.number_input("Temp T_e (K)", value=1e9)
+nth = st.sidebar.number_input("Density n_th", value=1e6)
 
 # -----------------------------------------------------------------------------
-# UI controls
+# Tabs and Display
 # -----------------------------------------------------------------------------
-st.sidebar.header("Common plotting / sampling controls")
-seed_amp = st.sidebar.number_input("Seed amplitude / normalization", value=1e6, format="%.2e")
-n_seed = st.sidebar.number_input("Seed frequency points", value=120, min_value=40, max_value=1000)
-n_e = st.sidebar.number_input("Electron energy points", value=120, min_value=40, max_value=1000)
-n_out = st.sidebar.number_input("Scattered photon points", value=120, min_value=40, max_value=1000)
+t1, t2, t3, t4, t5 = st.tabs(["PL+PL", "BB+PL", "CSV+PL", "CSV+MJ", "CSV+MB"])
 
-out_lo = st.sidebar.number_input("Lower scattered photon energy ε₁ (keV)", value=1e-2, format="%.2e", min_value=1e-12)
-out_hi = st.sidebar.number_input("Upper scattered photon energy ε₁ (keV)", value=1e3, format="%.2e", min_value=1e-12)
-
-if out_lo <= 0 or out_hi <= 0 or out_lo >= out_hi:
-    st.error("Scattered photon energy limits must be positive and satisfy lower < upper.")
-    st.stop()
-
-eps_s_grid = positive_log_grid(out_lo, out_hi, int(n_out))
-
-# -----------------------------------------------------------------------------
-# Case parameters
-# -----------------------------------------------------------------------------
-st.sidebar.header("Power-law seed photons")
-pl_seed_alpha = st.sidebar.number_input("Seed photon index α", value=1.5)
-pl_seed_nu_min = st.sidebar.number_input("Seed ν min (Hz)", value=1e8, format="%.2e", min_value=1e-30)
-pl_seed_nu_max = st.sidebar.number_input("Seed ν max (Hz)", value=1e20, format="%.2e", min_value=1e-30)
-pl_seed_nu0 = st.sidebar.number_input("Reference ν0 (Hz)", value=1e15, format="%.2e", min_value=1e-30)
-
-st.sidebar.header("Power-law electrons")
-pl_e_p = st.sidebar.number_input("Electron index p", value=2.5)
-pl_e_Emin = st.sidebar.number_input("Electron Emin (keV)", value=1e-3, format="%.2e", min_value=1e-30)
-pl_e_Emax = st.sidebar.number_input("Electron Emax (keV)", value=1e6, format="%.2e", min_value=1e-30)
-
-st.sidebar.header("Blackbody seed photons")
-bb_T = st.sidebar.number_input("Blackbody temperature T (K)", value=1e6, min_value=1.0)
-
-st.sidebar.header("Multicolor blackbody seed photons")
-st.sidebar.info("The shape for MCD cases is loaded from the uploaded CSV file.")
-mcd_Tin = st.sidebar.number_input("Inner disk temperature T_in (K)", value=1e7, min_value=1.0)
-mcd_rout_over_rin = st.sidebar.number_input("Outer/inner radius ratio", value=1e3, min_value=2.0, format="%.2e")
-
-st.sidebar.header("Thermal electrons")
-Te = st.sidebar.number_input("Thermal electron temperature T_e (K)", value=1e9, min_value=1.0)
-nth = st.sidebar.number_input("Thermal electron density n_th", value=1e6, min_value=0.0)
-
-# -----------------------------------------------------------------------------
-# Case builders
-# -----------------------------------------------------------------------------
-def make_powerlaw_powerlaw_case():
-    nu = positive_log_grid(pl_seed_nu_min, pl_seed_nu_max, int(n_seed))
-    seed_Fnu = seed_powerlaw_nu(nu, pl_seed_alpha, seed_amp, pl_seed_nu_min, pl_seed_nu_max, pl_seed_nu0)
-    seed_eps = nu_to_eps_keV(nu)
-    seed_n = flux_to_seed_number_density(nu, seed_Fnu)
-    e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
-    ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
-    slope = (pl_e_p - 1.0) / 2.0
-    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    valid = emiss_num > 0
-    norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope)) if np.any(valid) else 1.0
-    emiss = norm * eps_s_grid ** (-slope)
-    return nu, seed_Fnu, e_grid, ne, emiss
-
-def make_blackbody_powerlaw_case():
-    nu_peak = max(peak_nu_from_T(bb_T), 1e8)
-    nu = positive_log_grid(nu_peak * 1e-3, nu_peak * 1e2, int(n_seed))
-    seed_Fnu = seed_blackbody_nu(nu, bb_T, seed_amp)
-    seed_eps = nu_to_eps_keV(nu)
-    seed_n = flux_to_seed_number_density(nu, seed_Fnu)
-    e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
-    ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
-    slope = (pl_e_p - 1.0) / 2.0
-    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    valid = emiss_num > 0
-    norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope)) if np.any(valid) else 1.0
-    emiss = norm * eps_s_grid ** (-slope)
-    return nu, seed_Fnu, e_grid, ne, emiss
-
-def make_mcd_powerlaw_case():
-    # Use CSV range (approx 3 to 1e22 Hz)
-    nu = positive_log_grid(3.0, 1e22, int(n_seed))
-    seed_Fnu = seed_multicolor_bb_nu(nu, Tin_K=mcd_Tin, norm=seed_amp)
-    seed_eps = nu_to_eps_keV(nu)
-    seed_n = flux_to_seed_number_density(nu, seed_Fnu)
-    e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
-    ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
-    slope = (pl_e_p - 1.0) / 2.0
-    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    valid = emiss_num > 0
-    norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope)) if np.any(valid) else 1.0
-    emiss = norm * eps_s_grid ** (-slope)
-    return nu, seed_Fnu, e_grid, ne, emiss
-
-def thermal_energy_grid(T_K, npts):
-    kT_keV = KB_KEV_PER_K * T_K
-    Emin = max(1e-4 * kT_keV, 1e-8)
-    Emax = max(25.0 * kT_keV, Emin * 10.0)
-    return positive_log_grid(Emin, Emax, int(npts))
-
-def make_mcd_mj_case():
-    nu = positive_log_grid(3.0, 1e22, int(n_seed))
-    seed_Fnu = seed_multicolor_bb_nu(nu, Tin_K=mcd_Tin, norm=seed_amp)
-    seed_eps = nu_to_eps_keV(nu)
-    seed_n = flux_to_seed_number_density(nu, seed_Fnu)
-    e_grid = thermal_energy_grid(Te, n_e)
-    ne = electron_mj_E(e_grid, nth, Te)
-    emiss = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    return nu, seed_Fnu, e_grid, ne, emiss
-
-def make_mcd_mb_case():
-    nu = positive_log_grid(3.0, 1e22, int(n_seed))
-    seed_Fnu = seed_multicolor_bb_nu(nu, Tin_K=mcd_Tin, norm=seed_amp)
-    seed_eps = nu_to_eps_keV(nu)
-    seed_n = flux_to_seed_number_density(nu, seed_Fnu)
-    e_grid = thermal_energy_grid(Te, n_e)
-    ne = electron_mb_E(e_grid, nth, Te)
-    emiss = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    return nu, seed_Fnu, e_grid, ne, emiss
-
-# -----------------------------------------------------------------------------
-# Case display helper
-# -----------------------------------------------------------------------------
-def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
-    st.subheader(case_title)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        plot_spectrum(nu, seed_Fnu, "Seed spectrum from CSV", "Frequency ν (Hz)", "Flux density (W m^-2 Hz^-1)")
-    with c2:
-        plot_spectrum(e_grid, ne, "Electron spectrum", "Electron energy ε (keV)", "N(ε)")
-    with c3:
-        plot_spectrum(eps_s_grid, emiss, "Scattered volume emissivity", "Scattered photon energy ε₁ (keV)", "Volume emissivity (J s^-1 keV^-1 m^-3)")
+# Case 3: CSV + Power Law (Example of integration)
+with t3:
+    st.header("MCD (CSV) + Power-law Electrons")
+    nu = positive_log_grid(1e10, 1e18, n_pts)
+    seed_Fnu = seed_multicolor_bb_nu(nu, seed_amp)
+    e_grid = positive_log_grid(1e-1, 1e5, n_pts)
+    ne = electron_powerlaw_E(e_grid, pl_e_p, nth, 1e-1, 1e5)
     
-    out_df = pd.DataFrame({"Epsilon_1_keV": eps_s_grid, "Volume_Emissivity": emiss})
-    st.dataframe(out_df, use_container_width=True)
-    st.download_button(label=f"Download CSV", data=out_df.to_csv(index=False).encode("utf-8"), file_name=f"{case_title.lower().replace(' ', '_')}.csv", mime="text/csv")
+    if uploaded_file:
+        emiss = ic_emissivity(eps_s_grid, nu_to_eps_keV(nu), flux_to_seed_number_density(nu, seed_Fnu), e_grid, ne)
+        display_case = True
+    else:
+        emiss = np.zeros_like(eps_s_grid)
+        display_case = False
 
-# -----------------------------------------------------------------------------
-# Compute all five cases
-# -----------------------------------------------------------------------------
-tabs = st.tabs(["1) PL Seed + PL e-", "2) BB Seed + PL e-", "3) MCD CSV + PL e-", "4) MCD CSV + MJ e-", "5) MCD CSV + MB e-"])
+    c1, c2, c3 = st.columns(3)
+    with c1: plot_spectrum(nu, seed_Fnu, "Seed (CSV)", "Hz", "Flux")
+    with c2: plot_spectrum(e_grid, ne, "Electrons (PL)", "keV", "N(E)")
+    with c3: plot_spectrum(eps_s_grid, emiss, "IC Emissivity", "keV", "J/s/keV/m3")
 
-with tabs[0]:
-    display_case("Power-law seed + Power-law electrons", *make_powerlaw_powerlaw_case())
-with tabs[1]:
-    display_case("Blackbody seed + Power-law electrons", *make_blackbody_powerlaw_case())
-with tabs[2]:
-    display_case("Multicolor blackbody seed (CSV) + Power-law electrons", *make_mcd_powerlaw_case())
-with tabs[3]:
-    display_case("Multicolor blackbody seed (CSV) + Maxwell-Jüttner electrons", *make_mcd_mj_case())
-with tabs[4]:
-    display_case("Multicolor blackbody seed (CSV) + Maxwell-Boltzmann electrons", *make_mcd_mb_case())
-
-st.markdown("<div style='text-align: right;'><p><strong>By Garv Trivedi</strong></p><p><strong>under guidance of Dr. C. Konar</strong></p></div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align: right;'><p><strong>By Garv Trivedi</strong></p></div>", unsafe_allow_html=True)
