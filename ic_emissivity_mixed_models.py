@@ -32,7 +32,7 @@ kB_SI = 1.38e-23
 PI = np.pi
 
 # -----------------------------------------------------------------------------
-# Helpers
+# Functions 
 # -----------------------------------------------------------------------------
 def integrate(y, x, axis=-1):
     """SciPy Simpson if available, otherwise fallback to trapezoidal."""
@@ -59,9 +59,6 @@ def log_or_linear_grid(lo, hi, npts):
         return np.logspace(np.log10(lo), np.log10(hi), npts)
     return np.linspace(lo, hi, npts)
 
-# -----------------------------------------------------------------------------
-# Your original power-law branch
-# -----------------------------------------------------------------------------
 def findc(q_pl, B, p):
     y = 3 - p
     v = m * (C**2)
@@ -128,9 +125,6 @@ def powerlaw_emissivity(eps_grid, p, seed_E, seed_V, q_pl, B, alpha, F, vref, th
     final2 = constt2 * eps_grid**(-((p - 1) / 2)) * 1.6e-16
     return final, final2
 
-# -----------------------------------------------------------------------------
-# Thermal electron distributions from your notes
-# -----------------------------------------------------------------------------
 def maxwell_juttner_ne_gamma(gamma, nth, T):
     """
     N_MJ(gamma) = nth * gamma^2 * beta / (Theta * K2(1/Theta)) * exp(-gamma/Theta)
@@ -243,6 +237,7 @@ st.title("Inverse Compton Spectra for Single Scattering")
 # Sidebar inputs
 # -----------------------------
 st.sidebar.header("Seed photon spectrum")
+
 uploaded_file = st.sidebar.file_uploader(
     "Upload a whitespace/comma separated txt file",
     type=["txt", "csv"]
@@ -250,18 +245,33 @@ uploaded_file = st.sidebar.file_uploader(
 
 st.sidebar.write("File must contain columns named `Epsilon` and `V_Epsilon`.")
 
-if uploaded_file is None:
-    st.info("Upload a seed-photon file with columns `Epsilon` and `V_Epsilon` to run the model.")
-    st.stop()
+# -----------------------------
+# Data source selection
+# -----------------------------
+use_sample = st.sidebar.checkbox("Use Sample.txt (default)", value=True)
 
-seed_df = load_seed_spectrum(uploaded_file)
+if use_sample:
+    try:
+        seed_df = load_seed_spectrum("Sample.txt")
+        st.success("Using Sample.txt as default seed photon spectrum")
+    except Exception as e:
+        st.error(f"Failed to load Sample.txt: {e}")
+        st.stop()
+
+else:
+    if uploaded_file is None:
+        st.warning("Please upload a file or enable 'Use Sample.txt'")
+        st.stop()
+    
+    seed_df = load_seed_spectrum(uploaded_file)
+    st.success(f"Using uploaded file: {uploaded_file.name}")
 seed_E = seed_df["Epsilon"].to_numpy(dtype=float)
 seed_V = seed_df["V_Epsilon"].to_numpy(dtype=float)
 
 st.sidebar.header("Output grid")
 lower_E = st.sidebar.number_input("Lower limit of epsilon", value=1e-2, min_value=1e-12, format="%.2e")
 upper_E = st.sidebar.number_input("Upper limit of epsilon", value=1e3, min_value=1e-12, format="%.2e")
-n_out = st.sidebar.number_input("Number of output points", value=200, min_value=3, max_value=2000)
+n_out = st.sidebar.number_input("Number of output points", value=378, min_value=3, max_value=2000)
 
 eps_grid = np.logspace(np.log10(lower_E), np.log10(upper_E), n_out)
 
@@ -303,14 +313,14 @@ def make_display_df(x, y):
     })
 
 # -----------------------------
-# Tabs: show all three models
+# Tabs
 # -----------------------------
 tab_powerlaw, tab_mj, tab_mb = st.tabs(
     ["Power law", "Maxwell-Jüttner", "Maxwell-Boltzmann"]
 )
 
 # =============================================================================
-# Power-law tab
+# Power-law 
 # =============================================================================
 with tab_powerlaw:
     st.header("Power Law Distribution")
@@ -345,7 +355,7 @@ with tab_powerlaw:
     st.latex(r"C = N_0 (m_e c^2)^{-p}")
 
 # =============================================================================
-# Maxwell-Jüttner tab
+# Maxwell-Juttner 
 # =============================================================================
 with tab_mj:
     st.header("Maxwell-Jüttner Distribution")
@@ -360,7 +370,7 @@ with tab_mj:
         g_min = 1.0 + (1e-4 * theta) 
         g_max_thermal = 1.0 + (25.0 * theta)
         
-        gamma_grid = np.linspace(g_min, g_max_thermal, int(n_gamma))
+        gamma_grid = np.logspace(np.log10(g_min), np.log10(g_max_thermal), int(n_gamma))
 
         ne_gamma = maxwell_juttner_ne_gamma(gamma_grid, nth, T_thermal)
         emissivity = thermal_ic_emissivity(eps_grid, seed_E, seed_V, gamma_grid, ne_gamma)
@@ -368,7 +378,7 @@ with tab_mj:
         st.dataframe(make_display_df(eps_grid, emissivity), use_container_width=True)
         plot_spectrum(eps_grid, emissivity, "Inverse Compton Result (Maxwell-Jüttner)")
 # =============================================================================
-# Maxwell-Boltzmann tab
+# Maxwell-Boltzmann 
 # =============================================================================
 with tab_mb:
     st.header("Maxwell-Boltzmann Distribution")
@@ -400,5 +410,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 
