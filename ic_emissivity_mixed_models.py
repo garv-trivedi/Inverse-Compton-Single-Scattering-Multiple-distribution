@@ -112,14 +112,13 @@ def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
     - ν^(1/3) at low frequency
     - exponential cutoff at high frequency
     """
-
     nu = np.asarray(nu, dtype=float)
 
-    # Log-spaced radius (CRUCIAL)
+    # Log-spaced radius
     r = np.logspace(0.0, np.log10(rout_over_rin), int(n_r))
 
     # Temperature profile: T(r) ~ r^(-3/4)
-    T_r = Tin_K * r**(-3.0/4.0)
+    T_r = Tin_K * r**(-3.0 / 4.0)
 
     # Broadcast
     nu2d = nu[None, :]
@@ -127,21 +126,17 @@ def seed_multicolor_bb_nu(nu, Tin_K, norm, rout_over_rin=1e3, n_r=300):
 
     # Planck exponent
     x = (H * nu2d) / (KB_SI * Tr2d)
-    x = np.clip(x, 1e-10, 700)
+    x = np.clip(x, 1e-10, 700.0)
 
-    Bnu = np.zeros_like(nu2d)
+    # Rayleigh-Jeans and Wien forms, combined safely
+    Bnu_rj = (2.0 * nu2d**2 * KB_SI * Tr2d) / C**2
+    Bnu_wien = (2.0 * H * nu2d**3 / C**2) * np.exp(-x)
+    Bnu = np.where(x < 1e-2, Bnu_rj, Bnu_wien)
 
-
-    mask_rj = x < 1e-2
-    Bnu[mask_rj] = (2.0 * nu2d[mask_rj]**2 * KB_SI * Tr2d[mask_rj]) / C**2
-
-    mask_wien = ~mask_rj
-    exp_x = np.exp(np.clip(x[mask_wien], None, 700))
-    Bnu[mask_wien] = (2.0 * H * nu2d[mask_wien]**3 / C**2) * np.exp(-x[mask_wien])
-    
     integrand = 2.0 * PI * r[:, None]**2 * Bnu
     Fnu = integrate(integrand, x=np.log(r), axis=0)
     return norm * Fnu
+
 
 def flux_to_seed_number_density(nu, Fnu):
     """
@@ -162,7 +157,6 @@ def electron_powerlaw_E(E_keV, p, nth, Emin_keV, Emax_keV):
     shape = gamma ** (-p)
     mask = (E_keV >= Emin_keV) & (E_keV <= Emax_keV)
     shape = np.where(mask, shape, 0.0)
-    shape = E_keV ** (-p)
     return normalize_to_area(E_keV, shape, nth)
 
 
@@ -307,7 +301,7 @@ def make_powerlaw_powerlaw_case():
     e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
     ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
-    # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
+    # Analytical Thomson-regime emissivity
     slope = (pl_e_p - 1.0) / 2.0
 
     # Get normalization from numerical IC (just to anchor amplitude)
@@ -324,6 +318,7 @@ def make_powerlaw_powerlaw_case():
 
     return nu, seed_Fnu, e_grid, ne, emiss
 
+
 def make_blackbody_powerlaw_case():
     nu_peak = max(peak_nu_from_T(bb_T), 1e8)
     nu = positive_log_grid(nu_peak * 1e-3, nu_peak * 1e2, int(n_seed))
@@ -334,8 +329,7 @@ def make_blackbody_powerlaw_case():
     e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
     ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
-    
-  # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
+    # Analytical Thomson-regime emissivity
     slope = (pl_e_p - 1.0) / 2.0
 
     # Get normalization from numerical IC (just to anchor amplitude)
@@ -369,8 +363,7 @@ def make_mcd_powerlaw_case():
     e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
     ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
-    
-   # --- Analytical Thomson-regime emissivity (fix for straight power-law) ---
+    # Analytical Thomson-regime emissivity
     slope = (pl_e_p - 1.0) / 2.0
 
     # Get normalization from numerical IC (just to anchor amplitude)
@@ -528,6 +521,6 @@ st.markdown(
         <p><strong>under guidance of Dr. C. Konar</strong></p>
     </div>
     """,
-    unsafe_allow_html=True  
+    unsafe_allow_html=True
 )
 
