@@ -71,28 +71,42 @@ def peak_nu_from_T(T):
 # -----------------------------------------------------------------------------
 # Plot helper
 # -----------------------------------------------------------------------------
-def plot_spectrum(x, y, title, xlabel, ylabel):
+def plot_spectrum(x, y, title, x_label, y_label, loglog=True):
 
-    x = np.asarray(x)
-    y = np.asarray(y)
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
 
-    mask = (x > 0) & (y > 0) & np.isfinite(x) & np.isfinite(y)
+    mask = np.isfinite(x) & np.isfinite(y) & (x > 0) & (y > 0)
 
-    fig, ax = plt.subplots(figsize=(5.8, 4.5))
+    fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
     if np.any(mask):
-        ax.loglog(x[mask], y[mask], linewidth=2.0)
 
-    ax.set_title(title, fontsize=12)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+        if loglog:
+            ax.loglog(x[mask], y[mask], linewidth=2.0)
+
+        else:
+            ax.plot(x[mask], y[mask], linewidth=2.0)
+
+    else:
+        ax.text(
+            0.5,
+            0.5,
+            "No positive data to plot",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
+
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
 
     ax.grid(True, which="both", alpha=0.3)
 
     st.pyplot(fig)
 
     plt.close(fig)
-
 
 # -----------------------------------------------------------------------------
 # Seed photon spectra
