@@ -579,36 +579,41 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
          st.pyplot(fig)
 
          plt.close(fig)
+
     with c2:
 
          fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
     # Thermal electron cases
-         if (("Maxwell-Jüttner" in case_title)
-         or
-            ("Maxwell-Boltzmann" in case_title)):
+        if (("Maxwell-Jüttner" in case_title)
+        or
+           ("Maxwell-Boltzmann" in case_title)):
 
-            ax.loglog(e_grid, ne, linewidth=2.0)
+        # Normalize for visualization
+           ne_plot = ne / np.max(ne)
 
-        # Show rise + peak + tail
-            ax.set_ylim(1e-30, np.max(ne) * 10)
+           ax.loglog(e_grid, ne_plot, linewidth=2.0)
+
+        # Better dynamic range for thermal peak visibility
+           ax.set_ylim(1e-6, 2)
 
     # Power-law electron cases
-         else:
+        else:
 
-            ax.loglog(e_grid, ne, linewidth=2.0)
+           ax.loglog(e_grid, ne, linewidth=2.0)
 
-         ax.set_title("Electron spectrum")
+        ax.set_title("Electron spectrum")
 
-         ax.set_xlabel("Electron energy ε (keV)")
+        ax.set_xlabel("Electron energy ε (keV)")
 
-         ax.set_ylabel("N(ε)")
+        ax.set_ylabel("N(ε)")
 
-         ax.grid(True, which="both", alpha=0.3)
+        ax.grid(True, which="both", alpha=0.3)
 
-         st.pyplot(fig)
+        st.pyplot(fig)
 
-         plt.close(fig)
+        plt.close(fig)    
+    
     with c3:
         plot_spectrum(
             eps_s_grid,
