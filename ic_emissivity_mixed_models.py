@@ -53,6 +53,8 @@ def normalize_to_area(x, y, target_area):
 def nu_to_eps_keV(nu_hz):
     return (H * np.asarray(nu_hz, dtype=float)) / KEV_J
 
+def seed_sed_nu(nu, Fnu):
+    return np.asarray(nu, dtype=float) * np.asarray(Fnu, dtype=float)
 
 def peak_nu_from_T(T_K):
     return 2.821439 * KB_SI * T_K / H
@@ -402,10 +404,15 @@ def make_blackbody_powerlaw_case():
         pl_e_Emax,
     )
 
-    slope = (pl_e_p - 1.0) / 2.0
+    emiss = ic_emissivity(
+    eps_s_grid,
+    seed_eps,
+    seed_n,
+    e_grid,
+    ne,
+)
 
-    emiss = eps_s_grid ** (-slope)
-
+if np.max(emiss) > 0:
     emiss = emiss / np.max(emiss)
 
     return (
@@ -460,12 +467,17 @@ def make_mcd_powerlaw_case():
         pl_e_Emax,
     )
 
-    slope = (pl_e_p - 1.0) / 2.0
+    emiss = ic_emissivity(
+    eps_s_grid,
+    seed_eps,
+    seed_n,
+    e_grid,
+    ne,
+)
 
-    emiss = eps_s_grid ** (-slope)
-
+if np.max(emiss) > 0:
     emiss = emiss / np.max(emiss)
-
+    
     return (
         nu,
         seed_Fnu,
@@ -531,14 +543,14 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        plot_spectrum(
-            nu,
-            seed_Fnu,
-            "Raw seed photon spectrum",
-            "Frequency ν (Hz)",
-            "Flux density (W m^-2 Hz^-1)",
-        )
-
+    plot_spectrum(
+        nu,
+        seed_sed_nu(nu, seed_Fnu),
+        "Seed spectral energy distribution",
+        "Frequency ν (Hz)",
+        "νFν (arb. units)",
+    )
+    
     with c2:
         plot_spectrum(
             e_grid,
