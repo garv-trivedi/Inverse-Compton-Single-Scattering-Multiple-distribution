@@ -118,10 +118,6 @@ def seed_powerlaw_nu(nu, alpha, norm, nu_min, nu_max, nu0):
 
 def seed_blackbody_nu(nu, T_seed_K, norm):
 
-    """
-    Proper Planck blackbody hump.
-    """
-
     nu = np.asarray(nu, dtype=float)
 
     x = (H * nu) / (KB_SI * T_seed_K)
@@ -129,8 +125,6 @@ def seed_blackbody_nu(nu, T_seed_K, norm):
     x = np.clip(x, 1e-10, 700)
 
     Bnu = (2.0 * H * nu**3 / C**2) / np.expm1(x)
-
-    Bnu = Bnu / np.max(Bnu)
 
     return norm * Bnu
 
@@ -177,7 +171,6 @@ def seed_multicolor_bb_nu(
         axis=0,
     )
 
-    Fnu = Fnu / np.max(Fnu)
 
     return norm * Fnu
 
@@ -549,9 +542,11 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
 
     with c1:
 
-          seed_SED = nu * seed_Fnu
+          seed_plot = nu * seed_Fnu
 
-          plot_spectrum(nu, seed_SED, "Seed photon spectrum", "Frequency ν (Hz)", "νFν (arb. units)",)
+          seed_plot = seed_plot / np.max(seed_plot)
+
+          plot_spectrum(nu, seed_plot, "Seed photon spectrum", "Frequency ν (Hz)", "νFν (arb. units)",)
 
     with c2:
         plot_spectrum(
