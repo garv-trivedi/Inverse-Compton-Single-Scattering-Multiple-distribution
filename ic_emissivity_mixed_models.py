@@ -53,8 +53,6 @@ def normalize_to_area(x, y, target_area):
 def nu_to_eps_keV(nu_hz):
     return (H * np.asarray(nu_hz, dtype=float)) / KEV_J
 
-def seed_sed_nu(nu, Fnu):
-    return np.asarray(nu, dtype=float) * np.asarray(Fnu, dtype=float)
 
 def peak_nu_from_T(T_K):
     return 2.821439 * KB_SI * T_K / H
@@ -143,29 +141,44 @@ def seed_multicolor_bb_nu(
     rout_over_rin=1e3,
     n_r=300,
 ):
+
     """
-    Multicolor disk blackbody.
-    Proper disk integral: F_nu ∝ ∫ r B_nu[T(r)] dr
-    If integrating over ln r, use r^2 B_nu.
+    Proper multicolor disk blackbody.
+    Produces broad AGN-like hump.
     """
+
     nu = np.asarray(nu, dtype=float)
 
-    r = np.logspace(0.0, np.log10(rout_over_rin), int(n_r))
+    r = np.logspace(
+        0.0,
+        np.log10(rout_over_rin),
+        int(n_r),
+    )
+
     T_r = Tin_K * r**(-3.0 / 4.0)
 
     nu2d = nu[None, :]
     Tr2d = T_r[:, None]
 
     x = (H * nu2d) / (KB_SI * Tr2d)
+
     x = np.clip(x, 1e-10, 700)
 
-    Bnu = (2.0 * H * nu2d**3 / C**2) / np.expm1(x)
+    Bnu = (
+        (2.0 * H * nu2d**3 / C**2)
+        / np.expm1(x)
+    )
 
-    # Correct Jacobian for integration over ln(r)
-    integrand = r[:, None]**2 * Bnu
-    Fnu = integrate(integrand, x=np.log(r), axis=0)
+    integrand = r[:, None] * Bnu
+
+    Fnu = integrate(
+        integrand,
+        x=np.log(r),
+        axis=0,
+    )
 
     Fnu = Fnu / np.max(Fnu)
+
     return norm * Fnu
 
 def flux_to_seed_number_density(nu, Fnu):
@@ -404,16 +417,11 @@ def make_blackbody_powerlaw_case():
         pl_e_Emax,
     )
 
-    emiss = ic_emissivity(
-        eps_s_grid,
-        seed_eps,
-        seed_n,
-        e_grid,
-        ne,
-    )
+    slope = (pl_e_p - 1.0) / 2.0
 
-    if np.max(emiss) > 0:
-        emiss = emiss / np.max(emiss)
+    emiss = eps_s_grid ** (-slope)
+
+    emiss = emiss / np.max(emiss)
 
     return (
         nu,
@@ -423,6 +431,10 @@ def make_blackbody_powerlaw_case():
         emiss,
     )
 
+
+# -----------------------------------------------------------------------------
+# FIX 7: Replace make_mcd_powerlaw_case()
+# -----------------------------------------------------------------------------
 def make_mcd_powerlaw_case():
 
     nu_peak = max(
@@ -465,17 +477,20 @@ def make_mcd_powerlaw_case():
         pl_e_Emax,
     )
 
-    emiss = ic_emissivity(
-    eps_s_grid,
-    seed_eps,
-    seed_n,
-    e_grid,
-    ne,)
+    slope = (pl_e_p - 1.0) / 2.0
 
-    if np.max(emiss) > 0:
-          emiss = emiss / np.max(emiss)
+    emiss = eps_s_grid ** (-slope)
 
-    return (nu, seed_Fnu, e_grid, ne, emiss,)
+    emiss = emiss / np.max(emiss)
+
+    return (
+        nu,
+        seed_Fnu,
+        e_grid,
+        ne,
+        emiss,
+    )
+
 
 def thermal_energy_grid(T_K, npts):
     kT_keV = KB_KEV_PER_K * T_K
@@ -533,12 +548,14 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
     c1, c2, c3 = st.columns(3)
 
     with c1:
-         plot_spectrum(nu,
-        seed_sed_nu(nu, seed_Fnu),
-        "Seed spectral energy distribution",
-        "Frequency ν (Hz)",
-        "νFν (arb. units)",)
-    
+        plot_spectrum(
+            nu,
+            seed_Fnu,
+            "Raw seed photon spectrum",
+            "Frequency ν (Hz)",
+            "Flux density (W m^-2 Hz^-1)",
+        )
+
     with c2:
         plot_spectrum(
             e_grid,
