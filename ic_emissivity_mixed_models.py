@@ -378,31 +378,58 @@ def make_powerlaw_powerlaw_case():
 
 
 def make_blackbody_powerlaw_case():
-    nu_peak = max(peak_nu_from_T(bb_T), 1e8)
-    nu = positive_log_grid(nu_peak * 1e-3, nu_peak * 1e2, int(n_seed))
-    seed_Fnu = seed_blackbody_nu(nu, bb_T, seed_amp)
+
+    nu_peak = max(
+        peak_nu_from_T(bb_T),
+        1e8,
+    )
+
+    nu = positive_log_grid(
+        nu_peak * 1e-3,
+        nu_peak * 1e2,
+        int(n_seed),
+    )
+
+    seed_Fnu = seed_blackbody_nu(
+        nu,
+        bb_T,
+        seed_amp,
+    )
+
     seed_eps = nu_to_eps_keV(nu)
-    seed_n = flux_to_seed_number_density(nu, seed_Fnu)
 
-    e_grid = positive_log_grid(pl_e_Emin, pl_e_Emax, int(n_e))
-    ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
+    seed_n = flux_to_seed_number_density(
+        nu,
+        seed_Fnu,
+    )
 
-    # Analytical Thomson-regime emissivity
+    e_grid = positive_log_grid(
+        pl_e_Emin,
+        pl_e_Emax,
+        int(n_e),
+    )
+
+    ne = electron_powerlaw_E(
+        e_grid,
+        pl_e_p,
+        nth,
+        pl_e_Emin,
+        pl_e_Emax,
+    )
+
     slope = (pl_e_p - 1.0) / 2.0
 
-    # Get normalization from numerical IC (just to anchor amplitude)
-    emiss_num = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
+    emiss = eps_s_grid ** (-slope)
 
-    # Avoid zeros
-    valid = emiss_num > 0
-    if np.any(valid):
-        norm = emiss_num[valid][0] / (eps_s_grid[valid][0] ** (-slope))
-    else:
-        norm = 1.0
+    emiss = emiss / np.max(emiss)
 
-    emiss = norm * eps_s_grid ** (-slope)
-
-    return nu, seed_Fnu, e_grid, ne, emiss
+    return (
+        nu,
+        seed_Fnu,
+        e_grid,
+        ne,
+        emiss,
+    )
 
 
 def make_mcd_powerlaw_case():
