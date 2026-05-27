@@ -404,19 +404,24 @@ def make_blackbody_powerlaw_case():
         pl_e_Emax,
     )
 
-    emiss = ic_emissivity(
-    eps_s_grid,
-    seed_eps,
-    seed_n,
-    e_grid,
-    ne,
-)
+        emiss = ic_emissivity(
+        eps_s_grid,
+        seed_eps,
+        seed_n,
+        e_grid,
+        ne,
+    )
 
-if np.max(emiss) > 0:
-    emiss = emiss / np.max(emiss)
+    if np.max(emiss) > 0:
+        emiss = emiss / np.max(emiss)
 
-return (nu, seed_Fnu, e_grid, ne, emiss,)
-
+    return (
+        nu,
+        seed_Fnu,
+        e_grid,
+        ne,
+        emiss,
+    )
 
 def make_mcd_powerlaw_case():
 
