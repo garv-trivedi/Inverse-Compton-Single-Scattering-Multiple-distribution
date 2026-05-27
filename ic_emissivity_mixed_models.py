@@ -404,7 +404,7 @@ def make_blackbody_powerlaw_case():
         pl_e_Emax,
     )
 
-        emiss = ic_emissivity(
+    emiss = ic_emissivity(
         eps_s_grid,
         seed_eps,
         seed_n,
