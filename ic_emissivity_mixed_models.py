@@ -415,13 +415,7 @@ def make_blackbody_powerlaw_case():
 if np.max(emiss) > 0:
     emiss = emiss / np.max(emiss)
 
-    return (
-        nu,
-        seed_Fnu,
-        e_grid,
-        ne,
-        emiss,
-    )
+    return (nu, seed_Fnu, e_grid, ne, emiss,)
 
 
 
