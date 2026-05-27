@@ -194,12 +194,27 @@ def flux_to_seed_number_density(nu, Fnu):
 # -----------------------------------------------------------------------------
 # Electron spectra as N(epsilon) vs epsilon
 # -----------------------------------------------------------------------------
-def electron_powerlaw_E(E_keV, p, nth, Emin_keV, Emax_keV):
+def electron_powerlaw_E(
+    E_keV,
+    p,
+    nth,
+    Emin_keV,
+    Emax_keV,
+):
+
     E_keV = np.asarray(E_keV, dtype=float)
-    gamma = 1.0 + E_keV / ME_C2_KEV
-    shape = gamma ** (-p)
-    mask = (E_keV >= Emin_keV) & (E_keV <= Emax_keV)
+
+    E_safe = np.maximum(E_keV, 1e-20)
+
+    shape = E_safe ** (-p)
+
+    mask = (
+        (E_keV >= Emin_keV)
+        & (E_keV <= Emax_keV)
+    )
+
     shape = np.where(mask, shape, 0.0)
+
     return normalize_to_area(E_keV, shape, nth)
 
 
