@@ -585,9 +585,7 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
          fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
     # Thermal electron cases
-        if (("Maxwell-Jüttner" in case_title)
-        or
-           ("Maxwell-Boltzmann" in case_title)):
+        if (("Maxwell-Jüttner" in case_title) or ("Maxwell-Boltzmann" in case_title)):
 
         # Normalize for visualization
            ne_plot = ne / np.max(ne)
