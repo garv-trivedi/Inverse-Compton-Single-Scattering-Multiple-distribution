@@ -141,44 +141,29 @@ def seed_multicolor_bb_nu(
     rout_over_rin=1e3,
     n_r=300,
 ):
-
     """
-    Proper multicolor disk blackbody.
-    Produces broad AGN-like hump.
+    Multicolor disk blackbody.
+    Proper disk integral: F_nu ∝ ∫ r B_nu[T(r)] dr
+    If integrating over ln r, use r^2 B_nu.
     """
-
     nu = np.asarray(nu, dtype=float)
 
-    r = np.logspace(
-        0.0,
-        np.log10(rout_over_rin),
-        int(n_r),
-    )
-
+    r = np.logspace(0.0, np.log10(rout_over_rin), int(n_r))
     T_r = Tin_K * r**(-3.0 / 4.0)
 
     nu2d = nu[None, :]
     Tr2d = T_r[:, None]
 
     x = (H * nu2d) / (KB_SI * Tr2d)
-
     x = np.clip(x, 1e-10, 700)
 
-    Bnu = (
-        (2.0 * H * nu2d**3 / C**2)
-        / np.expm1(x)
-    )
+    Bnu = (2.0 * H * nu2d**3 / C**2) / np.expm1(x)
 
-    integrand = r[:, None] * Bnu
-
-    Fnu = integrate(
-        integrand,
-        x=np.log(r),
-        axis=0,
-    )
+    # Correct Jacobian for integration over ln(r)
+    integrand = r[:, None]**2 * Bnu
+    Fnu = integrate(integrand, x=np.log(r), axis=0)
 
     Fnu = Fnu / np.max(Fnu)
-
     return norm * Fnu
 
 def flux_to_seed_number_density(nu, Fnu):
@@ -432,9 +417,7 @@ def make_blackbody_powerlaw_case():
     )
 
 
-# -----------------------------------------------------------------------------
-# FIX 7: Replace make_mcd_powerlaw_case()
-# -----------------------------------------------------------------------------
+
 def make_mcd_powerlaw_case():
 
     nu_peak = max(
