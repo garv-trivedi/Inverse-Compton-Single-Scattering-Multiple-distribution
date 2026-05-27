@@ -543,13 +543,11 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
     c1, c2, c3 = st.columns(3)
 
     with c1:
-    plot_spectrum(
-        nu,
+         plot_spectrum(nu,
         seed_sed_nu(nu, seed_Fnu),
         "Seed spectral energy distribution",
         "Frequency ν (Hz)",
-        "νFν (arb. units)",
-    )
+        "νFν (arb. units)",)
     
     with c2:
         plot_spectrum(
