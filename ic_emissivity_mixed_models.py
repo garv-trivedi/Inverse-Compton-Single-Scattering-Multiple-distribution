@@ -55,7 +55,10 @@ def nu_to_eps_keV(nu_hz):
 
 
 def peak_nu_from_T(T_K):
-    return 2.821439 * KB_SI * T_K / H
+    """
+    Peak frequency for νFν Planck spectrum.
+    """
+    return 3.920690394 * KB_SI * T_K / H
 
 
 def positive_log_grid(lo, hi, npts):
@@ -378,11 +381,10 @@ def make_blackbody_powerlaw_case():
     )
 
     nu = positive_log_grid(
-        nu_peak * 1e-3,
-        nu_peak * 1e2,
-        int(n_seed),
-    )
-
+         nu_peak * 1e-8,
+         nu_peak * 1e4,
+         int(n_seed),)
+    
     seed_Fnu = seed_blackbody_nu(
         nu,
         bb_T,
@@ -425,9 +427,7 @@ def make_blackbody_powerlaw_case():
     )
 
 
-# -----------------------------------------------------------------------------
-# FIX 7: Replace make_mcd_powerlaw_case()
-# -----------------------------------------------------------------------------
+
 def make_mcd_powerlaw_case():
 
     nu_peak = max(
@@ -436,11 +436,10 @@ def make_mcd_powerlaw_case():
     )
 
     nu = positive_log_grid(
-        nu_peak * 1e-3,
-        nu_peak * 1e2,
-        int(n_seed),
-    )
-
+         nu_peak * 1e-8,
+         nu_peak * 1e4,
+         int(n_seed),)
+    
     seed_Fnu = seed_multicolor_bb_nu(
         nu,
         Tin_K=mcd_Tin,
@@ -494,7 +493,10 @@ def thermal_energy_grid(T_K, npts):
 
 def make_mcd_mj_case():
     nu_peak = max(peak_nu_from_T(mcd_Tin), 1e8)
-    nu = positive_log_grid(nu_peak * 1e-3, nu_peak * 1e2, int(n_seed))
+    nu = positive_log_grid(
+         nu_peak * 1e-8,
+         nu_peak * 1e4,
+         int(n_seed),)
     seed_Fnu = seed_multicolor_bb_nu(
         nu,
         Tin_K=mcd_Tin,
@@ -514,7 +516,10 @@ def make_mcd_mj_case():
 
 def make_mcd_mb_case():
     nu_peak = max(peak_nu_from_T(mcd_Tin), 1e8)
-    nu = positive_log_grid(nu_peak * 1e-3, nu_peak * 1e2, int(n_seed))
+    nu = positive_log_grid(
+         nu_peak * 1e-8,
+         nu_peak * 1e4,
+         int(n_seed),)
     seed_Fnu = seed_multicolor_bb_nu(
         nu,
         Tin_K=mcd_Tin,
