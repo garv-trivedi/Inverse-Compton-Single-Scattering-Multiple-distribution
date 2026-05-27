@@ -587,13 +587,35 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
     # Thermal electron cases
         if (("Maxwell-Jüttner" in case_title) or ("Maxwell-Boltzmann" in case_title)):
 
-        # Normalize for visualization
            ne_plot = ne / np.max(ne)
 
-           ax.loglog(e_grid, ne_plot, linewidth=2.0)
+        # Shift visibility so relativistic/non-relativistic peaks separate clearly
+           if "Maxwell-Jüttner" in case_title:
 
-        # Better dynamic range for thermal peak visibility
-           ax.set_ylim(1e-6, 2)
+               # relativistic tail emphasized
+               ne_plot = ne_plot * (e_grid / np.max(e_grid))**0.6
+
+               ax.loglog(
+                   e_grid,
+                   ne_plot,
+                   linewidth=2.5,
+                   label="Relativistic Maxwell-Jüttner"
+               )
+
+           else:
+
+               # preserve classical MB peak
+               ne_plot = ne_plot * (e_grid / np.max(e_grid))**(-0.15)
+
+               ax.loglog(
+                   e_grid,
+                   ne_plot,
+                   linewidth=2.5,
+                   label="Non-relativistic Maxwell-Boltzmann"
+               )
+
+           ax.set_ylim(1e-8, 3)
+           ax.legend()
 
     # Power-law electron cases
         else:
