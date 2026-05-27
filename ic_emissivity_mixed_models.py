@@ -548,13 +548,10 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        plot_spectrum(
-            nu,
-            seed_Fnu,
-            "Raw seed photon spectrum",
-            "Frequency ν (Hz)",
-            "Flux density (W m^-2 Hz^-1)",
-        )
+
+          seed_SED = nu * seed_Fnu
+
+          plot_spectrum(nu, seed_SED, "Seed photon spectrum", "Frequency ν (Hz)", "νFν (arb. units)",)
 
     with c2:
         plot_spectrum(
