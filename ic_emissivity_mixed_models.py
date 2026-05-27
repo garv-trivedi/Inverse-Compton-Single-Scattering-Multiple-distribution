@@ -475,15 +475,8 @@ def make_mcd_powerlaw_case():
 
 if np.max(emiss) > 0:
     emiss = emiss / np.max(emiss)
-    
-return (
-        nu,
-        seed_Fnu,
-        e_grid,
-        ne,
-        emiss,
-    )
 
+return (nu, seed_Fnu, e_grid, ne, emiss,)
 
 def thermal_energy_grid(T_K, npts):
     kT_keV = KB_KEV_PER_K * T_K
