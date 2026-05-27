@@ -548,11 +548,25 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
     with c1:
 
           seed_plot = nu * seed_Fnu
-
           seed_plot = seed_plot / np.max(seed_plot)
 
-          plot_spectrum(nu, seed_plot, "Seed photon spectrum", "Frequency ν (Hz)", "νFν (arb. units)",)
+          fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
+          ax.loglog(nu, seed_plot, linewidth=2.0)
+
+         ax.set_ylim(1e-30, 1)
+
+         ax.set_title("Seed photon spectrum")
+
+         ax.set_xlabel("Frequency ν (Hz)")
+
+         ax.set_ylabel("νFν (arb. units)")
+
+         ax.grid(True, which="both", alpha=0.3)
+
+         st.pyplot(fig)
+
+         plt.close(fig)
     with c2:
         plot_spectrum(
             e_grid,
