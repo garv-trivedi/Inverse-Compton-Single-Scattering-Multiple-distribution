@@ -261,6 +261,40 @@ def electron_mj_E(
         )
     )
 
+def electron_mj_textbook_E(E_keV, nth, T_e_K):
+    """
+    Maxwell–Jüttner using textbook K2 normalization (from PDF expression).
+
+    N(γ) = nth * γ^2 β / (Θ K2(1/Θ)) * exp(-γ/Θ)
+
+    Converted to N(E) using E = (γ-1)mec^2.
+    """
+
+    E_keV = np.asarray(E_keV, dtype=float)
+
+    theta = (KB_KEV_PER_K * T_e_K) / ME_C2_KEV
+    theta = max(theta, 1e-12)
+
+    gamma = 1.0 + E_keV / ME_C2_KEV
+
+    beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, None))
+
+    if scipy_kn is None:
+        raise ImportError("SciPy required for K2 Maxwell–Jüttner")
+
+    K2 = scipy_kn(2, 1.0 / theta)
+
+    ne = (
+        nth
+        * gamma**2
+        * beta
+        * np.exp(-gamma / theta)
+        /
+        (theta * K2 * ME_C2_KEV)
+    )
+
+    return ne
+    
     # --------------------------------------------------
     # Existing approximation
     # --------------------------------------------------
@@ -539,13 +573,8 @@ def make_mcd_powerlaw_case():
         int(n_e),
     )
 
-    ne = electron_powerlaw_E(
-        e_grid,
-        pl_e_p,
-        nth,
-        pl_e_Emin,
-        pl_e_Emax,
-    )
+    ne_num = electron_mj_E(e_grid, nth, Te)
+    ne_tex = electron_mj_textbook_E(e_grid, nth, Te)
 
     slope = (pl_e_p - 1.0) / 2.0
 
@@ -553,13 +582,7 @@ def make_mcd_powerlaw_case():
 
     emiss = emiss / np.max(emiss)
 
-    return (
-        nu,
-        seed_Fnu,
-        e_grid,
-        ne,
-        emiss,
-    )
+    return nu, seed_Fnu, e_grid, ne_num, ne_tex, emiss
 
 
 def thermal_energy_grid(T_K, npts):
@@ -679,15 +702,15 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
            if "Maxwell-Jüttner" in case_title:
 
                # relativistic tail emphasized
-               ne_plot = ne_plot * (e_grid / np.max(e_grid))**0.6
+               ne_num, ne_tex = ne, ne_exact  # rename accordingly
 
-               ax.loglog(
-                   e_grid,
-                   ne_plot,
-                   linewidth=2.5,
-                   label="Relativistic Maxwell-Jüttner"
-               )
+               ax.loglog(e_grid, ne_num / np.max(ne_num), linewidth=2.5, label="Numerical normalization (current)")
 
+               ax.loglog(e_grid, ne_tex / np.max(ne_tex), "--", linewidth=2.5, label="Analytical K2 normalization")
+
+               ax.set_title("Electron spectrum")
+               ax.legend()
+               
            else:
 
                # preserve classical MB peak
