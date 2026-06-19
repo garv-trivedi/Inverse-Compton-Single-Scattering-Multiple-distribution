@@ -554,7 +554,7 @@ def make_mcd_powerlaw_case():
         int(n_e),
     )
 
-      ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
+    ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
     slope = (pl_e_p - 1.0) / 2.0
 
