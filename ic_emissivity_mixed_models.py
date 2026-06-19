@@ -766,7 +766,7 @@ with tab3:
     display_case("Multicolor blackbody seed + Power-law electrons", nu, seed_Fnu, e_grid, ne, emiss)
 
 with tab4:
-    nu, seed_Fnu, e_grid, ne_num, ne_tex, emiss = make_mcd_powerlaw_case()
+    nu, seed_Fnu, e_grid, emiss = make_mcd_powerlaw_case()
     display_case(
     "Multicolor blackbody seed + Maxwell-Jüttner electrons",
     nu, seed_Fnu, e_grid, ne_num, emiss,
