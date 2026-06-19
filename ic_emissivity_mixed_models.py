@@ -554,8 +554,7 @@ def make_mcd_powerlaw_case():
         int(n_e),
     )
 
-    ne_num = electron_mj_E(e_grid, nth, Te)
-    ne_tex = electron_mj_textbook_E(e_grid, nth, Te)
+      ne = electron_powerlaw_E(e_grid, pl_e_p, nth, pl_e_Emin, pl_e_Emax)
 
     slope = (pl_e_p - 1.0) / 2.0
 
@@ -590,18 +589,10 @@ def make_mcd_mj_case():
     seed_n = flux_to_seed_number_density(nu, seed_Fnu)
 
     e_grid = thermal_energy_grid(Te, n_e)
-    ne = electron_mj_E(
-    e_grid,
-    nth,
-    Te,
-    use_exact_k2=(
-        mj_norm_mode
-        == "Exact K2 normalization"
-    ),
-    )
-
+    ne_num = electron_mj_E(e_grid, nth, Te, use_exact_k2=False)
+    ne_tex = electron_mj_textbook_E(e_grid, nth, Te)
     emiss = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    return nu, seed_Fnu, e_grid, ne, emiss
+    return nu, seed_Fnu, e_grid, ne_num, ne_tex, emiss
 
 
 def make_mcd_mb_case():
@@ -630,7 +621,7 @@ def make_mcd_mb_case():
 # -----------------------------------------------------------------------------
 # Case display helper
 # -----------------------------------------------------------------------------
-def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
+def display_case(case_title, nu, seed_Fnu, e_grid, ne_num, emiss, ne_tex=None):
     st.subheader(case_title)
 
     c1, c2, c3 = st.columns(3)
@@ -682,13 +673,15 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
         # Shift visibility so relativistic/non-relativistic peaks separate clearly
            if "Maxwell-Jüttner" in case_title:
 
-               ax.loglog(e_grid, ne / np.max(ne), linewidth=2.5, label="Maxwell–Jüttner")
+            ax.loglog(e_grid, ne_num / np.max(ne_num), linewidth=2.5, label="MJ (numerical normalization)")
 
-               ax.set_title("Electron spectrum (MJ)")
-               ax.set_xlabel("Electron energy ε (keV)")
-               ax.set_ylabel("N(ε)")
-               ax.grid(True, which="both", alpha=0.3)
-               ax.legend()
+            ax.loglog(e_grid, ne_tex / np.max(ne_tex), "--", linewidth=2.5, label="MJ (K2 analytic)")
+
+            ax.set_title("Electron spectrum (Maxwell–Jüttner)")
+            ax.set_xlabel("Electron energy ε (keV)")
+            ax.set_ylabel("N(ε)")
+            ax.grid(True, which="both", alpha=0.3)
+            ax.legend()
                
            else:
 
@@ -773,9 +766,11 @@ with tab3:
     display_case("Multicolor blackbody seed + Power-law electrons", nu, seed_Fnu, e_grid, ne, emiss)
 
 with tab4:
-    nu, seed_Fnu, e_grid, ne, emiss = make_mcd_mj_case()
-    display_case("Multicolor blackbody seed + Maxwell-Jüttner electrons", nu, seed_Fnu, e_grid, ne, emiss)
-    st.caption("If this curve is too small, increase Seed amplitude or T_e slightly.")
+    nu, seed_Fnu, e_grid, ne_num, ne_tex, emiss = make_mcd_powerlaw_case()
+    display_case(
+    "Multicolor blackbody seed + Maxwell-Jüttner electrons",
+    nu, seed_Fnu, e_grid, ne_num, emiss,
+    ne_tex)
 
 with tab5:
     nu, seed_Fnu, e_grid, ne, emiss = make_mcd_mb_case()
