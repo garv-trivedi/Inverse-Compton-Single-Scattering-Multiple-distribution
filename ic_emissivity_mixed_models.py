@@ -32,6 +32,10 @@ try:
 except Exception:
     scipy_simpson = None
 
+try:
+    from scipy.special import kn as scipy_kn
+except Exception:
+    scipy_kn = None
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -221,22 +225,89 @@ def electron_mb_E(E_keV, nth, T_e_K):
     shape = (2.0 / np.sqrt(PI)) * np.sqrt(E_keV) * np.exp(-E_keV / kT_keV) / (kT_keV ** 1.5)
     return normalize_to_area(E_keV, shape, nth)
 
+def electron_mj_E(
+    E_keV,
+    nth,
+    T_e_K,
+    use_exact_k2=False,
+):
+    """
+    Maxwell–Jüttner electron distribution.
 
-def electron_mj_E(E_keV, nth, T_e_K):
+    use_exact_k2=False:
+        Existing implementation:
+        shape computed then normalized numerically.
+
+    use_exact_k2=True:
+        Uses analytic normalization
+        n_th / (theta K2(1/theta)).
     """
-    Numerically normalized Maxwell-Jüttner shape.
-    We use exp(-(gamma-1)/theta) for stability; the missing constant factor is
-    absorbed by the numerical normalization.
-    """
+
     E_keV = np.asarray(E_keV, dtype=float)
-    theta = (KB_KEV_PER_K * T_e_K) / ME_C2_KEV
+
+    theta = (
+        KB_KEV_PER_K * T_e_K
+    ) / ME_C2_KEV
+
     theta = max(theta, 1e-12)
 
     gamma = 1.0 + E_keV / ME_C2_KEV
-    beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, None))
-    shape = gamma**2 * beta * np.exp(-(gamma - 1.0) / theta) / ME_C2_KEV
-    return normalize_to_area(E_keV, shape, nth)
 
+    beta = np.sqrt(
+        np.clip(
+            1.0 - 1.0 / gamma**2,
+            0.0,
+            None,
+        )
+    )
+
+    # --------------------------------------------------
+    # Existing approximation
+    # --------------------------------------------------
+    if (
+        not use_exact_k2
+        or scipy_kn is None
+    ):
+
+        shape = (
+            gamma**2
+            * beta
+            * np.exp(
+                -(gamma - 1.0) / theta
+            )
+            / ME_C2_KEV
+        )
+
+        return normalize_to_area(
+            E_keV,
+            shape,
+            nth,
+        )
+
+    # --------------------------------------------------
+    # Exact Maxwell–Jüttner
+    # --------------------------------------------------
+    K2 = scipy_kn(
+        2,
+        1.0 / theta,
+    )
+
+    ne = (
+        nth
+        * gamma**2
+        * beta
+        * np.exp(
+            -gamma / theta
+        )
+        /
+        (
+            theta
+            * K2
+            * ME_C2_KEV
+        )
+    )
+
+    return ne
 
 # -----------------------------------------------------------------------------
 # Inverse Compton kernel
@@ -341,6 +412,13 @@ mcd_rout_over_rin = st.sidebar.number_input("Outer/inner radius ratio", value=1e
 st.sidebar.header("Thermal electrons")
 Te = st.sidebar.number_input("Thermal electron temperature T_e (K)", value=1e9, min_value=1.0)
 nth = st.sidebar.number_input("Thermal electron density n_th", value=1e6, min_value=0.0)
+mj_norm_mode = st.sidebar.selectbox(
+    "Maxwell–Jüttner normalization",
+    [
+        "Approximate (post-normalized)",
+        "Exact K2 normalization"
+    ]
+)
 
 # -----------------------------------------------------------------------------
 # Case builders
@@ -508,7 +586,15 @@ def make_mcd_mj_case():
     seed_n = flux_to_seed_number_density(nu, seed_Fnu)
 
     e_grid = thermal_energy_grid(Te, n_e)
-    ne = electron_mj_E(e_grid, nth, Te)
+    ne = electron_mj_E(
+    e_grid,
+    nth,
+    Te,
+    use_exact_k2=(
+        mj_norm_mode
+        == "Exact K2 normalization"
+    ),
+    )
 
     emiss = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
     return nu, seed_Fnu, e_grid, ne, emiss
