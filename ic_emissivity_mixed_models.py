@@ -225,51 +225,7 @@ def electron_mb_E(E_keV, nth, T_e_K):
     shape = (2.0 / np.sqrt(PI)) * np.sqrt(E_keV) * np.exp(-E_keV / kT_keV) / (kT_keV ** 1.5)
     return normalize_to_area(E_keV, shape, nth)
 
-def electron_mj_E(
-    E_keV,
-    nth,
-    T_e_K,
-    use_exact_k2=False,
-):
-    """
-    Maxwell–Jüttner electron distribution.
-
-    use_exact_k2=False:
-        Existing implementation:
-        shape computed then normalized numerically.
-
-    use_exact_k2=True:
-        Uses analytic normalization
-        n_th / (theta K2(1/theta)).
-    """
-
-    E_keV = np.asarray(E_keV, dtype=float)
-
-    theta = (
-        KB_KEV_PER_K * T_e_K
-    ) / ME_C2_KEV
-
-    theta = max(theta, 1e-12)
-
-    gamma = 1.0 + E_keV / ME_C2_KEV
-
-    beta = np.sqrt(
-        np.clip(
-            1.0 - 1.0 / gamma**2,
-            0.0,
-            None,
-        )
-    )
-
-def electron_mj_textbook_E(E_keV, nth, T_e_K):
-    """
-    Maxwell–Jüttner using textbook K2 normalization (from PDF expression).
-
-    N(γ) = nth * γ^2 β / (Θ K2(1/Θ)) * exp(-γ/Θ)
-
-    Converted to N(E) using E = (γ-1)mec^2.
-    """
-
+def electron_mj_E(E_keV, nth, T_e_K, use_exact_k2=False):
     E_keV = np.asarray(E_keV, dtype=float)
 
     theta = (KB_KEV_PER_K * T_e_K) / ME_C2_KEV
@@ -277,13 +233,38 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
 
     gamma = 1.0 + E_keV / ME_C2_KEV
 
-    beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, None))
+    beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, 1.0))
+
+    # relativistic MJ shape in gamma-space
+    shape = gamma**2 * beta * np.exp(-gamma / theta)
+
+    shape = np.nan_to_num(shape, nan=0.0, posinf=0.0, neginf=0.0)
+
+    # normalize to nth in a stable way
+    if use_exact_k2 and scipy_kn is not None:
+        K2 = scipy_kn(2, 1.0 / theta)
+        norm = nth / (theta * K2 * ME_C2_KEV)
+        ne = norm * shape
+    else:
+        ne = normalize_to_area(E_keV, shape / ME_C2_KEV, nth)
+
+    return ne
+
+def electron_mj_textbook_E(E_keV, nth, T_e_K):
+    E_keV = np.asarray(E_keV, dtype=float)
+
+    theta = (KB_KEV_PER_K * T_e_K) / ME_C2_KEV
+    theta = max(theta, 1e-12)
 
     if scipy_kn is None:
         raise ImportError("SciPy required for K2 Maxwell–Jüttner")
 
+    gamma = 1.0 + E_keV / ME_C2_KEV
+    beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, 1.0))
+
     K2 = scipy_kn(2, 1.0 / theta)
 
+    # FULL correct MJ form 
     ne = (
         nth
         * gamma**2
@@ -293,7 +274,7 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
         (theta * K2 * ME_C2_KEV)
     )
 
-    return ne
+    return np.nan_to_num(ne, nan=0.0, posinf=0.0, neginf=0.0)
     
     # --------------------------------------------------
     # Existing approximation
@@ -701,14 +682,12 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne, emiss):
         # Shift visibility so relativistic/non-relativistic peaks separate clearly
            if "Maxwell-Jüttner" in case_title:
 
-               # relativistic tail emphasized
-               ne_num, ne_tex = ne, ne_exact  # rename accordingly
+               ax.loglog(e_grid, ne / np.max(ne), linewidth=2.5, label="Maxwell–Jüttner")
 
-               ax.loglog(e_grid, ne_num / np.max(ne_num), linewidth=2.5, label="Numerical normalization (current)")
-
-               ax.loglog(e_grid, ne_tex / np.max(ne_tex), "--", linewidth=2.5, label="Analytical K2 normalization")
-
-               ax.set_title("Electron spectrum")
+               ax.set_title("Electron spectrum (MJ)")
+               ax.set_xlabel("Electron energy ε (keV)")
+               ax.set_ylabel("N(ε)")
+               ax.grid(True, which="both", alpha=0.3)
                ax.legend()
                
            else:
