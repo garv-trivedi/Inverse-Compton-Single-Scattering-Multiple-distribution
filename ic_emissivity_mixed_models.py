@@ -383,8 +383,8 @@ def ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid_keV, ne_e):
 # -----------------------------------------------------------------------------
 st.sidebar.header("Common plotting / sampling controls")
 seed_amp = st.sidebar.number_input("Seed amplitude / normalization", value=1e6, format="%.2e")
-n_seed = st.sidebar.number_input("Seed frequency points", value=120, min_value=40, max_value=1000)
-n_e = st.sidebar.number_input("Electron energy points", value=120, min_value=40, max_value=1000)
+n_seed = st.sidebar.number_input("Seed frequency points", value=300, min_value=40, max_value=1000)
+n_e = st.sidebar.number_input("Electron energy points", value=600, min_value=40, max_value=1000)
 n_out = st.sidebar.number_input("Scattered photon points", value=120, min_value=40, max_value=1000)
 
 out_lo = st.sidebar.number_input("Lower scattered photon energy ε₁ (keV)", value=1e-2, format="%.2e", min_value=1e-12)
