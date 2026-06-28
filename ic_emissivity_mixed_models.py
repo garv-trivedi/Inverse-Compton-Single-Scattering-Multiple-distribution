@@ -385,7 +385,7 @@ st.sidebar.header("Common plotting / sampling controls")
 seed_amp = st.sidebar.number_input("Seed amplitude / normalization", value=1e6, format="%.2e")
 n_seed = st.sidebar.number_input("Seed frequency points", value=300, min_value=40, max_value=1000)
 n_e = st.sidebar.number_input("Electron energy points", value=600, min_value=40, max_value=1000)
-n_out = st.sidebar.number_input("Scattered photon points", value=120, min_value=40, max_value=1000)
+n_out = st.sidebar.number_input("Scattered photon points", value=400, min_value=40, max_value=1000)
 
 out_lo = st.sidebar.number_input("Lower scattered photon energy ε₁ (keV)", value=1e-2, format="%.2e", min_value=1e-12)
 out_hi = st.sidebar.number_input("Upper scattered photon energy ε₁ (keV)", value=1e3, format="%.2e", min_value=1e-12)
@@ -566,11 +566,14 @@ def make_mcd_powerlaw_case():
 
 
 def thermal_energy_grid(T_K, npts):
-    kT_keV = KB_KEV_PER_K * T_K
-    Emin = max(1e-4 * kT_keV, 1e-8)
-    Emax = max(25.0 * kT_keV, Emin * 10.0)
-    return positive_log_grid(Emin, Emax, int(npts))
 
+    kT_keV = KB_KEV_PER_K * T_K
+
+    Emin = max(1e-5*kT_keV,1e-8)
+
+    Emax = max(80*kT_keV,5e4)
+
+    return positive_log_grid(Emin,Emax,int(npts))
 
 def make_mcd_mj_case():
     nu_peak = max(peak_nu_from_T(mcd_Tin), 1e8)
