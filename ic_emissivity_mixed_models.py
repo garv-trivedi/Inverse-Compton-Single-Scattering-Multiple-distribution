@@ -4,9 +4,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 plt.rcParams.update({
-    "font.size": 11,
+    "font.size": 13,
     "axes.titlesize": 13,
-    "axes.labelsize": 11,
+    "axes.labelsize": 12,
     "xtick.labelsize": 10.5,
     "ytick.labelsize": 10.5,
     "legend.fontsize": 10.5,
