@@ -3,6 +3,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({
+    "font.size": 11,
+    "axes.titlesize": 13,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 10.5,
+    "ytick.labelsize": 10.5,
+    "legend.fontsize": 10.5,
+    "lines.linewidth": 2.2,})
+
 # -----------------------------------------------------------------------------
 # Page setup
 # -----------------------------------------------------------------------------
