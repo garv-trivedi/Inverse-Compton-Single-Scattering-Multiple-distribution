@@ -58,23 +58,24 @@ def integrate(y, x, axis=-1):
 # ------------------------------------------------------------------
 # Modified Bessel function K2 helper
 # ------------------------------------------------------------------
+from scipy.integrate import quad
+from scipy.special import gamma
+import numpy as np
+
 def K2(x):
     """
-    Returns the modified Bessel function K2(x).
-
-    Uses SciPy when available.
-    Otherwise uses the large-x asymptotic approximation.
-
-    Can be reused in any other code.
+    Numerical evaluation of K2(x)
+    using its integral definition.
     """
-    x = np.asarray(x, dtype=float)
 
-    if scipy_kn is not None:
-        return scipy_kn(2, x)
+    x = float(x)
 
+    prefactor = (np.sqrt(np.pi) * (x/2.0)**2/ gamma(2.5))
+
+    integral, _ = quad(lambda t: np.exp(-x*t) * (t*t - 1.0)**1.5, 1.0, np.inf, epsabs=1e-10, epsrel=1e-10)
+
+    return prefactor * integral
     
-    return np.sqrt(np.pi/(2*x))*np.exp(-x)*(1 + 15/(8*x) + 105/(128*x**2))
-
 def normalize_to_area(x, y, target_area):
     area = integrate(y, x)
     if not np.isfinite(area) or area <= 0:
