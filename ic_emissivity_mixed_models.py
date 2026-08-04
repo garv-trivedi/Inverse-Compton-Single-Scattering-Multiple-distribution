@@ -350,7 +350,7 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
     return ne
 
 # -----------------------------------------------------------------------------
-# Inverse Compton kernel
+# Inverse Comptonization
 # -----------------------------------------------------------------------------
 def kn_dsigma_d_es(eps_s_keV, seed_eps_keV, gamma_grid):
     """
@@ -364,14 +364,16 @@ def kn_dsigma_d_es(eps_s_keV, seed_eps_keV, gamma_grid):
     if eps_s <= 0:
         return np.zeros((gamma.shape[0], eps.shape[1]))
 
-    Gamma_e = np.maximum(4.0*gamma*eps/ME_C2_KEV,1e-300)
+    eps = seed_eps_keV/ME_C2_KEV
+
+    Gamma_e = 4*gamma*eps
     denom = Gamma_e * (gamma * ME_C2_KEV - eps_s)
 
     valid = (Gamma_e > 0) & (denom > 0) & (eps > 0) & (eps_s < gamma * ME_C2_KEV)
     q = np.where(valid, eps_s / denom, 0.0)
     valid = valid & (q >= 1.0 / (4.0 * gamma**2)) & (q <= 1.0)
 
-    q_safe = np.clip(q, 1e-300, 1.0)
+    q_safe=np.clip(q,1e-12,1-1e-12)
     F = (
         2.0 * q_safe * np.log(q_safe)
         + (1.0 + 2.0 * q_safe) * (1.0 - q_safe)
@@ -398,7 +400,8 @@ def ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid_keV, ne_e):
     for eps_s in np.asarray(eps_s_grid, dtype=float):
         dsdE = kn_dsigma_d_es(eps_s, seed_eps, gamma_grid)
         inner_seed = integrate(seed_n[None, :] * dsdE,x=seed_eps,axis=1,)
-        total = integrate(ne_e * inner_seed, x=e_grid_keV)
+        total =logE=np.log(e_grid) 
+               integrate(ne*inner_seed*e_grid, x=logE)
         output.append(C * eps_s * total)
     return np.asarray(output)
 
