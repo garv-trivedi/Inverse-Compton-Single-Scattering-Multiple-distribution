@@ -55,6 +55,25 @@ def integrate(y, x, axis=-1):
         return scipy_simpson(y, x=x, axis=axis)
     return np.trapezoid(y, x=x, axis=axis)
 
+# ------------------------------------------------------------------
+# Modified Bessel function K2 helper
+# ------------------------------------------------------------------
+def K2(x):
+    """
+    Returns the modified Bessel function K2(x).
+
+    Uses SciPy when available.
+    Otherwise uses the large-x asymptotic approximation.
+
+    Can be reused in any other code.
+    """
+    x = np.asarray(x, dtype=float)
+
+    if scipy_kn is not None:
+        return scipy_kn(2, x)
+
+    
+    return np.sqrt(np.pi/(2*x))*np.exp(-x)*(1 + 15/(8*x) + 105/(128*x**2))
 
 def normalize_to_area(x, y, target_area):
     area = integrate(y, x)
@@ -271,7 +290,7 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
     gamma = 1.0 + E_keV / ME_C2_KEV
     beta = np.sqrt(np.clip(1.0 - 1.0 / gamma**2, 0.0, 1.0))
 
-    K2 = scipy_kn(2, 1.0 / theta)
+    K2_theta = K2(1.0/theta)
 
     # FULL correct MJ form 
     ne = (
@@ -280,7 +299,7 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
         * beta
         * np.exp(-gamma / theta)
         /
-        (theta * K2 * ME_C2_KEV)
+        (theta *  K2_theta * ME_C2_KEV)
     )
 
     return np.nan_to_num(ne, nan=0.0, posinf=0.0, neginf=0.0)
@@ -311,11 +330,8 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
     # --------------------------------------------------
     # Exact Maxwell–Jüttner
     # --------------------------------------------------
-    K2 = scipy_kn(
-        2,
-        1.0 / theta,
-    )
-
+    K2_theta = K2(1.0/theta)
+    
     ne = (
         nth
         * gamma**2
@@ -326,7 +342,7 @@ def electron_mj_textbook_E(E_keV, nth, T_e_K):
         /
         (
             theta
-            * K2
+            * K2_theta
             * ME_C2_KEV
         )
     )
