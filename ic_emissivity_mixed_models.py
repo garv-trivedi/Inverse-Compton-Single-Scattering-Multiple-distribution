@@ -400,8 +400,8 @@ def ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid_keV, ne_e):
     for eps_s in np.asarray(eps_s_grid, dtype=float):
         dsdE = kn_dsigma_d_es(eps_s, seed_eps, gamma_grid)
         inner_seed = integrate(seed_n[None, :] * dsdE,x=seed_eps,axis=1,)
-        total =logE=np.log(e_grid) 
-        integrate(ne*inner_seed*e_grid, x=logE)
+        logE = np.log(e_grid_keV)
+        total = integrate(ne_e * inner_seed * e_grid_keV, x=logE)
         output.append(C * eps_s * total)
     return np.asarray(output)
 
