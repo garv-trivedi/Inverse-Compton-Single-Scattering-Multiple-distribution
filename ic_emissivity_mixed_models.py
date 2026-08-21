@@ -605,26 +605,26 @@ def thermal_energy_grid(T_K, npts):
     return positive_log_grid(Emin,Emax,int(npts))
 
 def make_mcd_mj_case():
-    nu_peak = max(peak_nu_from_T(mcd_Tin), 1e8)
-    nu = positive_log_grid(
-         nu_peak * 1e-8,
-         nu_peak * 1e4,
-         int(n_seed),)
-    seed_Fnu = seed_multicolor_bb_nu(
-        nu,
-        Tin_K=mcd_Tin,
-        norm=seed_amp,
-        rout_over_rin=mcd_rout_over_rin,
-        n_r=200,
-    )
+
+    nu_peak = max( peak_nu_from_T(mcd_Tin), 1e8)
+
+    nu = positive_log_grid(nu_peak * 1e-8,nu_peak * 1e4,int(n_seed),)
+
+    seed_Fnu = seed_multicolor_bb_nu(nu,Tin_K=mcd_Tin,norm=seed_amp, rout_over_rin=mcd_rout_over_rin, n_r=200,  )
+
     seed_eps = nu_to_eps_keV(nu)
     seed_n = flux_to_seed_number_density(nu, seed_Fnu)
 
     e_grid = thermal_energy_grid(Te, n_e)
-    ne_num = electron_mj_E(e_grid, nth, Te, use_exact_k2=False)
-    ne_tex = electron_mj_textbook_E(e_grid, nth, Te)
-    emiss = ic_emissivity(eps_s_grid, seed_eps, seed_n, e_grid, ne)
-    return nu, seed_Fnu, e_grid, ne_num, ne_tex, emiss
+
+    ne_num = electron_mj_E( e_grid, nth, Te, use_exact_k2=False, )
+
+    ne_tex = electron_mj_textbook_E( e_grid, nth, Te,)
+
+    # Use the numerical MJ distribution for the IC calculation
+    emiss = ic_emissivity( eps_s_grid, seed_eps, seed_n, e_grid, ne_num, )
+
+    return ( nu, seed_Fnu, e_grid, ne_num, emiss, ne_tex,)
 
 
 def make_mcd_mb_case():
@@ -653,6 +653,24 @@ def make_mcd_mb_case():
 # -----------------------------------------------------------------------------
 # Case display helper
 # -----------------------------------------------------------------------------
+def energy_to_gamma(E_keV):
+    """Convert electron kinetic energy E to Lorentz factor gamma."""
+    return 1.0 + np.asarray(E_keV, dtype=float) / ME_C2_KEV
+
+
+def N_E_to_N_gamma(ne_E):
+    """
+    Convert N(E) to N(gamma).
+
+    Since:
+        E = (gamma - 1) m_e c^2
+        dE/dgamma = m_e c^2
+
+    therefore:
+        N(gamma) = N(E) * m_e c^2
+    """
+    return np.asarray(ne_E, dtype=float) * ME_C2_KEV
+
 def display_case(case_title, nu, seed_Fnu, e_grid, ne_num, emiss, ne_tex=None):
     st.subheader(case_title)
 
@@ -660,92 +678,134 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne_num, emiss, ne_tex=None):
 
     with c1:
 
-         fig, ax = plt.subplots(figsize=(6.5, 4.8))
+    fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
-    # Thermal spectra -> plot νFν
-         if ("Blackbody" in case_title) or ("Multicolor" in case_title):
+    # ---------------------------------------------------------
+    # Seed spectrum: frequency ν vs luminosity Lν
+    # ---------------------------------------------------------
 
-             seed_plot = nu * seed_Fnu
-             seed_plot = seed_plot / np.max(seed_plot)
+    Lnu = np.asarray(seed_Fnu, dtype=float)
 
-             ax.loglog(nu, seed_plot, linewidth=2.0)
+    # Normalize only for plotting so the different seed spectra
+    # remain visible on the same relative scale.
+    Lnu_plot = Lnu / np.max(Lnu)
 
-             ax.set_ylim(1e-30, 1)
+    mask = (
+        np.isfinite(nu)
+        & np.isfinite(Lnu_plot)
+        & (nu > 0)
+        & (Lnu_plot > 0)
+    )
 
-             ax.set_ylabel("νFν (arb. units)")
+    ax.loglog(
+        nu[mask],
+        Lnu_plot[mask],
+        linewidth=2.0,
+    )
 
-    # Power-law seed -> plot raw Fν
-         else:
+    ax.set_title("Seed photon spectrum")
 
-             seed_plot = seed_Fnu / np.max(seed_Fnu)
+    ax.set_xlabel("Frequency ν (Hz)")
+    ax.set_ylabel(r"$L_\nu$ (normalized)")
 
-             ax.loglog(nu, seed_plot, linewidth=2.0)
+    ax.grid(True, which="both", alpha=0.3)
 
-             ax.set_ylabel("Fν (arb. units)")
+    st.pyplot(fig)
 
-         ax.set_title("Seed photon spectrum")
-
-         ax.set_xlabel("Frequency ν (Hz)")
-
-         ax.grid(True, which="both", alpha=0.3)
-
-         st.pyplot(fig)
-
-         plt.close(fig)
+    plt.close(fig)
 
     with c2:
 
-        fig, ax = plt.subplots(figsize=(6.5, 4.8))
+    fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
-    # Thermal electron cases
-        if (("Maxwell-Jüttner" in case_title) or ("Maxwell-Boltzmann" in case_title)):
+    # ---------------------------------------------------------
+    # Electron spectrum: gamma vs N(gamma)
+    # ---------------------------------------------------------
 
-           ne_plot = ne / np.max(ne)
+    gamma = energy_to_gamma(e_grid)
 
-        # Shift visibility so relativistic/non-relativistic peaks separate clearly
-           if "Maxwell-Jüttner" in case_title:
+    # Numerical electron distribution
+    N_gamma_num = N_E_to_N_gamma(ne_num)
 
-            ax.loglog(e_grid, ne_num / np.max(ne_num), linewidth=2.5, label="MJ (numerical normalization)")
+    mask_num = (
+        np.isfinite(gamma)
+        & np.isfinite(N_gamma_num)
+        & (gamma > 1.0)
+        & (N_gamma_num > 0)
+    )
 
-            ax.loglog(e_grid, ne_tex / np.max(ne_tex), "--", linewidth=2.5, label="MJ (K2 analytic)")
+    # ---------------------------------------------------------
+    # Maxwell-Juttner: plot numerical + analytical separately
+    # ---------------------------------------------------------
 
-            ax.set_title("Electron spectrum (Maxwell–Jüttner)")
-            ax.set_xlabel("Electron energy ε (keV)")
-            ax.set_ylabel("N(ε)")
-            ax.grid(True, which="both", alpha=0.3)
-            ax.legend()
-               
-           else:
+    if "Maxwell-Jüttner" in case_title:
 
-               # preserve classical MB peak
-               ne_plot = ne_plot * (e_grid / np.max(e_grid))**(-0.15)
+        ax.loglog(
+            gamma[mask_num],
+            N_gamma_num[mask_num] / np.max(N_gamma_num[mask_num]),
+            linewidth=2.5,
+            label="MJ numerical",
+        )
 
-               ax.loglog(
-                   e_grid,
-                   ne_plot,
-                   linewidth=2.5,
-                   label="Non-relativistic Maxwell-Boltzmann"
-               )
+        if ne_tex is not None:
 
-           ax.set_ylim(1e-8, 3)
-           ax.legend()
+            N_gamma_exact = N_E_to_N_gamma(ne_tex)
 
-    # Power-law electron cases
-        else:
+            mask_exact = (
+                np.isfinite(gamma)
+                & np.isfinite(N_gamma_exact)
+                & (gamma > 1.0)
+                & (N_gamma_exact > 0)
+            )
 
-           ax.loglog(e_grid, ne, linewidth=2.0)
+            ax.loglog(
+                gamma[mask_exact],
+                N_gamma_exact[mask_exact]
+                / np.max(N_gamma_exact[mask_exact]),
+                "--",
+                linewidth=2.5,
+                label="MJ analytical K₂",
+            )
 
-        ax.set_title("Electron spectrum")
+        ax.set_title("Electron spectrum (Maxwell–Jüttner)")
 
-        ax.set_xlabel("Electron energy ε (keV)")
+    # ---------------------------------------------------------
+    # Maxwell-Boltzmann
+    # ---------------------------------------------------------
 
-        ax.set_ylabel("N(ε)")
+    elif "Maxwell-Boltzmann" in case_title:
 
-        ax.grid(True, which="both", alpha=0.3)
+        ax.loglog(
+            gamma[mask_num],
+            N_gamma_num[mask_num] / np.max(N_gamma_num[mask_num]),
+            linewidth=2.5,
+            label="Maxwell–Boltzmann",
+        )
 
-        st.pyplot(fig)
+        ax.set_title("Electron spectrum (Maxwell–Boltzmann)")
 
-        plt.close(fig)    
+    # ---------------------------------------------------------
+    # Power-law electrons
+    # ---------------------------------------------------------
+
+    else:
+
+        ax.loglog(
+            gamma[mask_num],
+            N_gamma_num[mask_num] / np.max(N_gamma_num[mask_num]),
+            linewidth=2.0,
+            label="Power-law electrons",
+        )
+
+        ax.set_title("Electron spectrum (Power-law)")
+
+    ax.set_xlabel(r"Lorentz factor $\gamma$")
+    ax.set_ylabel(r"$N(\gamma)$")
+    ax.grid(True, which="both", alpha=0.3)
+    ax.legend()
+
+    st.pyplot(fig)
+    plt.close(fig)    
     
     with c3:
         plot_spectrum(
@@ -786,37 +846,33 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 )
 
 with tab1:
+
     nu, seed_Fnu, e_grid, ne, emiss = make_powerlaw_powerlaw_case()
-    display_case("Power-law seed + Power-law electrons", nu, seed_Fnu, e_grid, ne, emiss)
+
+    display_case("Power-law seed + Power-law electrons",nu,seed_Fnu,e_grid,ne,emiss,)
 
 with tab2:
-    nu, seed_Fnu, e_grid, ne, emiss = make_blackbody_powerlaw_case()
-    display_case("Blackbody seed + Power-law electrons", nu, seed_Fnu, e_grid, ne, emiss)
 
+    nu, seed_Fnu, e_grid, ne, emiss = make_blackbody_powerlaw_case()
+
+    display_case("Blackbody seed + Power-law electrons",nu,seed_Fnu,e_grid,ne,emiss,)
+    
 with tab3:
+
     nu, seed_Fnu, e_grid, ne, emiss = make_mcd_powerlaw_case()
-    display_case("Multicolor blackbody seed + Power-law electrons", nu, seed_Fnu, e_grid, ne, emiss)
+
+    display_case("Multicolor blackbody seed + Power-law electrons",nu,seed_Fnu,e_grid,ne,emiss,)
 
 with tab4:
-    nu, seed_Fnu, e_grid, ne_num, ne_tex, emiss = make_mcd_mj_case()
 
-    display_case(
-        "Multicolor blackbody seed + Maxwell-Jüttner electrons",
-        nu, seed_Fnu, e_grid,
-        ne_num, emiss,
-        ne_tex
-    )
+    ( nu, seed_Fnu, e_grid, ne, emiss, ne_tex,) = make_mcd_mj_case()
+
+    display_case( "Multicolor blackbody seed + Maxwell-Jüttner electrons", nu, seed_Fnu, e_grid, ne, emiss, ne_tex,)
 
 with tab5:
-    nu, seed_Fnu, e_grid, ne, emiss = make_mcd_mb_case()
-    display_case("Multicolor blackbody seed + Maxwell-Boltzmann electrons", nu, seed_Fnu, e_grid, ne, emiss)
 
-st.markdown(
-    """
-    <div style='text-align: right;'>
-        <p><strong>By Garv Trivedi</strong></p>
-        <p><strong>under guidance of Dr. C. Konar</strong></p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    nu, seed_Fnu, e_grid, ne, emiss = make_mcd_mb_case()
+
+    display_case("Multicolor blackbody seed + Maxwell-Boltzmann electrons",nu,seed_Fnu, e_grid, ne,emiss, )
+
+st.markdown( """<div style='text-align: right;'><p><strong>By Garv Trivedi</strong></p><p><strong>under guidance of Dr. C. Konar</strong></p></div> """,unsafe_allow_html=True)
