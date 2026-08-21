@@ -678,74 +678,63 @@ def display_case(case_title, nu, seed_Fnu, e_grid, ne_num, emiss, ne_tex=None):
 
     with c1:
 
-    fig, ax = plt.subplots(figsize=(6.5, 4.8))
+     fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
     # ---------------------------------------------------------
     # Seed spectrum: frequency ν vs luminosity Lν
     # ---------------------------------------------------------
 
-    Lnu = np.asarray(seed_Fnu, dtype=float)
+     Lnu = np.asarray(seed_Fnu, dtype=float)
 
     # Normalize only for plotting so the different seed spectra
     # remain visible on the same relative scale.
-    Lnu_plot = Lnu / np.max(Lnu)
+     Lnu_plot = Lnu / np.max(Lnu)
 
-    mask = (
-        np.isfinite(nu)
-        & np.isfinite(Lnu_plot)
-        & (nu > 0)
-        & (Lnu_plot > 0)
-    )
+     mask = (np.isfinite(nu) & np.isfinite(Lnu_plot) & (nu > 0) & (Lnu_plot > 0))
 
-    ax.loglog(
-        nu[mask],
-        Lnu_plot[mask],
-        linewidth=2.0,
-    )
+     ax.loglog(nu[mask],Lnu_plot[mask],linewidth=2.0,)
 
-    ax.set_title("Seed photon spectrum")
+     ax.set_title("Seed photon spectrum")
 
-    ax.set_xlabel("Frequency ν (Hz)")
-    ax.set_ylabel(r"$L_\nu$ (normalized)")
+     ax.set_xlabel("Frequency ν (Hz)")
+     ax.set_ylabel(r"$L_\nu$ (normalized)")
 
-    ax.grid(True, which="both", alpha=0.3)
+     ax.grid(True, which="both", alpha=0.3)
 
-    st.pyplot(fig)
+     st.pyplot(fig)
 
-    plt.close(fig)
+     plt.close(fig)
 
     with c2:
 
-    fig, ax = plt.subplots(figsize=(6.5, 4.8))
+     fig, ax = plt.subplots(figsize=(6.5, 4.8))
 
     # ---------------------------------------------------------
     # Electron spectrum: gamma vs N(gamma)
     # ---------------------------------------------------------
 
-    gamma = energy_to_gamma(e_grid)
+     gamma = energy_to_gamma(e_grid)
 
     # Numerical electron distribution
-    N_gamma_num = N_E_to_N_gamma(ne_num)
+     N_gamma_num = N_E_to_N_gamma(ne_num)
 
-    mask_num = (
+     mask_num = (
         np.isfinite(gamma)
         & np.isfinite(N_gamma_num)
         & (gamma > 1.0)
-        & (N_gamma_num > 0)
-    )
+        & (N_gamma_num > 0))
 
     # ---------------------------------------------------------
     # Maxwell-Juttner: plot numerical + analytical separately
     # ---------------------------------------------------------
 
-    if "Maxwell-Jüttner" in case_title:
+     if "Maxwell-Jüttner" in case_title:
 
         ax.loglog(
             gamma[mask_num],
             N_gamma_num[mask_num] / np.max(N_gamma_num[mask_num]),
             linewidth=2.5,
-            label="MJ numerical",
-        )
+            label="MJ numerical",)
 
         if ne_tex is not None:
 
